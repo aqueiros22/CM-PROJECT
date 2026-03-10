@@ -147,7 +147,7 @@ fun AuthenticationScreen(
             onValueChange = { email = it },
             label = { Text("Email") },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp) // Slight rounding
+            shape = RoundedCornerShape(8.dp)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -191,13 +191,13 @@ fun AuthenticationScreen(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp), // Thicker button for better touch target
-            shape = RoundedCornerShape(4.dp), // Square-ish like the mockups
+                .height(50.dp),
+            shape = RoundedCornerShape(4.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = FieldSenseGreen,
-                contentColor = Color.Black // Dark text on green background
+                contentColor = Color.Black
             ),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp) // Adds the shadow
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
         ) {
             Text(
                 text = if (isLoginMode) "Continue" else "Register",
