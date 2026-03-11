@@ -9,6 +9,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,50 +25,46 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fieldsense.ui.theme.FieldSenseTheme
 import com.google.firebase.Firebase
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
-import com.google.firebase.auth.GoogleAuthProvider
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-class MainActivity : ComponentActivity() {
+import androidx.lifecycle.viewmodel.compose.viewModel
 
-    private lateinit var auth: FirebaseAuth
+
+
+class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Initialize Firebase Auth
-        auth = Firebase.auth
+
+        val authRepository = AuthRepository(Firebase.auth)
+        val factory = AuthViewModelFactory(authRepository)
 
         setContent {
-            // Everything inside FieldSenseTheme will inherit your custom colors and shapes
             FieldSenseTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
 
-                    // State to track if the user is already logged in
-                    var isUserLoggedIn by remember { mutableStateOf(auth.currentUser != null) }
+                    val authViewModel: AuthViewModel = viewModel(factory = factory)
+                    val authState by authViewModel.authState.collectAsState()
 
-                    if (isUserLoggedIn) {
-                        MainScreen(
-                            email = auth.currentUser?.email ?: "Unknown",
-                            modifier = Modifier.padding(innerPadding),
-                            onLogout = {
-                                auth.signOut()
-                                isUserLoggedIn = false // Go back to log in screen
-                            }
-                        )
-                    } else {
-                        AuthenticationScreen(
-                            auth = auth,
-                            modifier = Modifier.padding(innerPadding),
-                            onAuthenticationSuccess = {
-                                isUserLoggedIn = true
-                            }
-                        )
+                    when (authState) {
+                        is AuthState.Authenticated -> {
+                            MainScreen(
+                                email = authViewModel.getUserEmail(),
+                                modifier = Modifier.padding(innerPadding),
+                                onLogout = { authViewModel.signOut() }
+                            )
+                        }
+                        else -> {
+                            AuthenticationScreen(
+                                authViewModel = authViewModel,
+                                authState = authState,
+                                modifier = Modifier.padding(innerPadding)
+                            )
+                        }
                     }
                 }
             }
@@ -76,20 +74,22 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AuthenticationScreen(
-    auth: FirebaseAuth,
-    modifier: Modifier = Modifier,
-    onAuthenticationSuccess: () -> Unit
+    authViewModel: AuthViewModel,
+    authState: AuthState,
+    modifier: Modifier = Modifier
 ) {
-    // State variables for user input
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-
-    // Toggle between "Login" and "Register" modes
     var isLoginMode by remember { mutableStateOf(true) }
 
     val context = LocalContext.current
 
-    // Google Sign-In Setup
+    LaunchedEffect(authState) {
+        if (authState is AuthState.Error) {
+            Toast.makeText(context, authState.message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     val token = stringResource(R.string.default_web_client_id)
     val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
         .requestIdToken(token)
@@ -98,7 +98,6 @@ fun AuthenticationScreen(
 
     val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
 
-    // Google Sign-In Result Handler
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -106,24 +105,15 @@ fun AuthenticationScreen(
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
                 val account = task.getResult(ApiException::class.java)
-                val credential = GoogleAuthProvider.getCredential(account.idToken, null)
-
-                auth.signInWithCredential(credential)
-                    .addOnCompleteListener { authTask ->
-                        if (authTask.isSuccessful) {
-                            Toast.makeText(context, "Welcome!", Toast.LENGTH_SHORT).show()
-                            onAuthenticationSuccess()
-                        } else {
-                            Toast.makeText(context, "Error: ${authTask.exception?.message}", Toast.LENGTH_SHORT).show()
-                        }
-                    }
+                account.idToken?.let { idToken ->
+                    authViewModel.authenticateWithGoogle(idToken)
+                }
             } catch (e: ApiException) {
                 Toast.makeText(context, "Google Sign-In Failed.", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    // Main UI Column
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -141,73 +131,60 @@ fun AuthenticationScreen(
             modifier = Modifier.padding(bottom = 32.dp)
         )
 
-        // Email Field
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
             label = { Text("Email") },
             modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.shapes.medium,
+            enabled = authState !is AuthState.Loading
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Password Field
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.shapes.medium,
+            enabled = authState !is AuthState.Loading
         )
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Primary Action Button
         Button(
             onClick = {
-                if (email.isNotEmpty() && password.isNotEmpty()) {
-                    if (isLoginMode) {
-                        auth.signInWithEmailAndPassword(email, password)
-                            .addOnCompleteListener { task ->
-                                if (task.isSuccessful) onAuthenticationSuccess()
-                                else Toast.makeText(context, "Login failed", Toast.LENGTH_SHORT).show()
-                            }
-                    } else {
-                        auth.createUserWithEmailAndPassword(email, password)
-                            .addOnCompleteListener { task ->
-                                if (task.isSuccessful) {
-                                    Toast.makeText(context, "Account Created!", Toast.LENGTH_SHORT).show()
-                                    onAuthenticationSuccess()
-                                } else {
-                                    Toast.makeText(context, "Registration failed", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                    }
-                } else {
-                    Toast.makeText(context, "Fill all fields", Toast.LENGTH_SHORT).show()
-                }
+                authViewModel.authenticateWithEmail(email, password, isLoginMode)
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
             shape = MaterialTheme.shapes.small,
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
+            enabled = authState !is AuthState.Loading
         ) {
-            Text(
-                text = if (isLoginMode) "Continue" else "Register",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
-            )
+            if (authState is AuthState.Loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            } else {
+                Text(
+                    text = if (isLoginMode) "Continue" else "Register",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Toggle Mode Text Button
         TextButton(
             onClick = { isLoginMode = !isLoginMode },
-            modifier = Modifier.align(Alignment.CenterHorizontally)
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+            enabled = authState !is AuthState.Loading
         ) {
             Text(
                 text = if (isLoginMode) "Don't have an account? Sign up" else "Already have an account? Sign in",
@@ -217,7 +194,6 @@ fun AuthenticationScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Divider
         Row(verticalAlignment = Alignment.CenterVertically) {
             HorizontalDivider(modifier = Modifier.weight(1f))
             Text(" OR ", color = Color.Gray, modifier = Modifier.padding(horizontal = 8.dp))
@@ -226,13 +202,13 @@ fun AuthenticationScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Google Sign-In Button
         OutlinedButton(
             onClick = { launcher.launch(googleSignInClient.signInIntent) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
-            shape = MaterialTheme.shapes.small
+            shape = MaterialTheme.shapes.small,
+            enabled = authState !is AuthState.Loading
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.ic_google),
