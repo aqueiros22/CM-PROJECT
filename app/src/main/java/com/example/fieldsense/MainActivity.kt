@@ -32,7 +32,6 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 
-
 class MainActivity : ComponentActivity() {
 
     private lateinit var auth: FirebaseAuth
@@ -45,6 +44,7 @@ class MainActivity : ComponentActivity() {
         auth = Firebase.auth
 
         setContent {
+            // Everything inside FieldSenseTheme will inherit your custom colors and shapes
             FieldSenseTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
 
@@ -132,12 +132,12 @@ fun AuthenticationScreen(
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.Center
     ) {
-        
+
         Text(
             text = if (isLoginMode) "Sign In" else "Create Account",
             fontSize = 28.sp,
             fontWeight = FontWeight.Normal,
-            color = Color.Black,
+            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(bottom = 32.dp)
         )
 
@@ -147,7 +147,7 @@ fun AuthenticationScreen(
             onValueChange = { email = it },
             label = { Text("Email") },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
+            shape = MaterialTheme.shapes.medium
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -159,7 +159,7 @@ fun AuthenticationScreen(
             label = { Text("Password") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
+            shape = MaterialTheme.shapes.medium
         )
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -192,11 +192,7 @@ fun AuthenticationScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
-            shape = RoundedCornerShape(4.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = FieldSenseGreen,
-                contentColor = Color.Black
-            ),
+            shape = MaterialTheme.shapes.small,
             elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
         ) {
             Text(
@@ -215,7 +211,7 @@ fun AuthenticationScreen(
         ) {
             Text(
                 text = if (isLoginMode) "Don't have an account? Sign up" else "Already have an account? Sign in",
-                color = Color.DarkGray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
@@ -236,7 +232,7 @@ fun AuthenticationScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
-            shape = RoundedCornerShape(4.dp)
+            shape = MaterialTheme.shapes.small
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.ic_google),
@@ -247,7 +243,7 @@ fun AuthenticationScreen(
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = "Continue with Google",
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 16.sp
             )
         }
@@ -261,11 +257,21 @@ fun MainScreen(email: String, modifier: Modifier = Modifier, onLogout: () -> Uni
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "Welcome to FieldSense!", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            text = "Welcome to FieldSense!",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground
+        )
         Spacer(modifier = Modifier.height(16.dp))
-        Text(text = "Logged in as: $email")
+        Text(
+            text = "Logged in as: $email",
+            color = MaterialTheme.colorScheme.onBackground
+        )
         Spacer(modifier = Modifier.height(32.dp))
-        Button(onClick = onLogout) {
+        Button(
+            onClick = onLogout,
+            shape = MaterialTheme.shapes.small
+        ) {
             Text("Log Out")
         }
     }
