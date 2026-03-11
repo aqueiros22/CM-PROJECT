@@ -18,4 +18,7 @@ interface VisitDao {
 
     @Query("DELETE FROM visits WHERE id = :visitId")
     suspend fun deleteVisitById(visitId: Int)
+
+    @Query("SELECT * FROM visits WHERE isSynced = 0")
+    suspend fun getUnsyncedVisits(): List<Visit>
 }

@@ -261,6 +261,10 @@ fun MainScreen(
     val visits by visitViewModel.visits.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
 
+    LaunchedEffect(Unit) {
+        visitViewModel.syncPendingVisits()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -383,7 +387,7 @@ fun VisitCard(visit: Visit, onDelete: () -> Unit) {
                 )
 
                 Text(
-                    text = if (visit.isSynced) visit.date else "${visit.date} (Waiting for sync...)",
+                    text = visit.date,
                     style = MaterialTheme.typography.labelSmall,
                     color = if (visit.isSynced) MaterialTheme.colorScheme.primary else Color.Gray
                 )

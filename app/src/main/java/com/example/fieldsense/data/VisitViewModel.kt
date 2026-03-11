@@ -27,6 +27,12 @@ class VisitViewModel(private val repository: VisitRepository) : ViewModel() {
             repository.delete(visitId)
         }
     }
+
+    fun syncPendingVisits() {
+        viewModelScope.launch {
+            repository.syncPendingVisits()
+        }
+    }
 }
 class VisitViewModelFactory(private val repository: VisitRepository) :
     ViewModelProvider.Factory {

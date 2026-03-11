@@ -32,4 +32,22 @@ class VisitRepository(
             Log.e("Repository", "Cloud delete failed", e)
         }
     }
+
+    suspend fun syncPendingVisits() {
+        val pendingVisits = visitDao.getUnsyncedVisits()
+
+        pendingVisits.forEach { visit ->
+            try {
+                // Tenta o upload
+                val syncedVisit = visit.copy(isSynced = true)
+                firestoreService.uploadVisit(syncedVisit)
+
+                // Se correu bem, atualiza o Room
+                visitDao.insertVisit(syncedVisit)
+                Log.d("Sync", "Visita ${visit.id} sincronizada com sucesso!")
+            } catch (e: Exception) {
+                Log.e("Sync", "Ainda sem ligação para a visita ${visit.id}")
+            }
+        }
+    }
 }
