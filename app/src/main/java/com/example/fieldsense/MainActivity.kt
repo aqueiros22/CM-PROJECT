@@ -8,9 +8,17 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,6 +38,16 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.room.jarjarred.org.antlr.v4.codegen.model.Sync
+import com.example.fieldsense.data.AppDatabase
+import com.example.fieldsense.data.FirestoreService
+import com.example.fieldsense.data.Visit
+import com.example.fieldsense.data.VisitRepository
+import com.example.fieldsense.data.VisitViewModel
+import com.example.fieldsense.data.VisitViewModelFactory
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 
 
@@ -41,20 +59,27 @@ class MainActivity : ComponentActivity() {
 
 
         val authRepository = AuthRepository(Firebase.auth)
-        val factory = AuthViewModelFactory(authRepository)
+        val authFactory = AuthViewModelFactory(authRepository)
+
+        val database = AppDatabase.getDatabase(applicationContext)
+        val firestoreService = FirestoreService()
+        val visitRepository = VisitRepository(database.visitDao(), firestoreService)
+        val visitFactory = VisitViewModelFactory(visitRepository)
 
         setContent {
             FieldSenseTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
 
-                    val authViewModel: AuthViewModel = viewModel(factory = factory)
+                    val authViewModel: AuthViewModel = viewModel(factory = authFactory)
+                    val visitViewModel: VisitViewModel = viewModel(factory = visitFactory)
+
                     val authState by authViewModel.authState.collectAsState()
 
                     when (authState) {
                         is AuthState.Authenticated -> {
                             MainScreen(
                                 email = authViewModel.getUserEmail(),
-                                modifier = Modifier.padding(innerPadding),
+                                visitViewModel = visitViewModel,
                                 onLogout = { authViewModel.signOut() }
                             )
                         }
@@ -226,30 +251,209 @@ fun AuthenticationScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(email: String, modifier: Modifier = Modifier, onLogout: () -> Unit) {
-    Column(
-        modifier = modifier.fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "Welcome to FieldSense!",
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "Logged in as: $email",
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Spacer(modifier = Modifier.height(32.dp))
-        Button(
-            onClick = onLogout,
-            shape = MaterialTheme.shapes.small
-        ) {
-            Text("Log Out")
+fun MainScreen(
+    email: String,
+    visitViewModel: VisitViewModel,
+    onLogout: () -> Unit
+) {
+    val visits by visitViewModel.visits.collectAsState()
+    var showAddDialog by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "FieldSense",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                actions = {
+                    TextButton(onClick = onLogout) {
+                        Text("Log Out", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                )
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = "New Visit")
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { innerPadding ->
+
+        if (visits.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "No visits recorded. Click '+' to add.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(16.dp)
+            ) {
+                items(visits) { visit ->
+                    VisitCard(
+                        visit = visit,
+                        onDelete = { visitViewModel.deleteVisit(visit.id) }
+                    )
+                }
+            }
+        }
+
+        if (showAddDialog) {
+            AddVisitDialog(
+                onDismiss = { showAddDialog = false },
+                onConfirm = { code, name, loc ->
+                    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                    val currentDate = sdf.format(Date())
+                    visitViewModel.insertVisit(code, name, currentDate, loc)
+                    showAddDialog = false
+                }
+            )
         }
     }
+}
+@Composable
+fun VisitCard(visit: Visit, onDelete: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = visit.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Icon(
+                        imageVector = if (visit.isSynced) Icons.Filled.Check else Icons.Filled.Build,
+                        contentDescription = if (visit.isSynced) "Synced" else "Pending Sync",
+                        modifier = Modifier.size(16.dp),
+                        tint = if (visit.isSynced) Color(0xFF4CAF50) else Color.Gray
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "Code: ${visit.code}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Location: ${visit.location}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Text(
+                    text = if (visit.isSynced) visit.date else "${visit.date} (Waiting for sync...)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (visit.isSynced) MaterialTheme.colorScheme.primary else Color.Gray
+                )
+            }
+            IconButton(
+                onClick = onDelete,
+                colors = IconButtonDefaults.iconButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                )
+            ) {
+                Icon(Icons.Filled.Delete, contentDescription = "Delete Visit")
+            }
+        }
+    }
+}
+@Composable
+fun AddVisitDialog(onDismiss: () -> Unit, onConfirm: (String, String, String) -> Unit) {
+    var code by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+    var location by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = MaterialTheme.shapes.large,
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = {
+            Text(
+                "New Visit",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = { code = it },
+                    label = { Text("Code") },
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Site Name") },
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = location,
+                    onValueChange = { location = it },
+                    label = { Text("Location") },
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(code, name, location) },
+                enabled = code.isNotBlank() && name.isNotBlank() && location.isNotBlank(),
+                shape = MaterialTheme.shapes.small
+            ) {
+                Text("Save Visit")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    )
 }
