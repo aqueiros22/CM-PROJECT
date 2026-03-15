@@ -45,6 +45,10 @@ import com.example.fieldsense.data.Visit
 import com.example.fieldsense.data.VisitRepository
 import com.example.fieldsense.data.VisitViewModel
 import com.example.fieldsense.data.VisitViewModelFactory
+import com.example.fieldsense.data.Note
+import com.example.fieldsense.data.NoteRepository
+import com.example.fieldsense.data.NoteViewModel
+import com.example.fieldsense.data.NoteViewModelFactory
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -66,6 +70,9 @@ class MainActivity : ComponentActivity() {
         val visitRepository = VisitRepository(database.visitDao(), firestoreService)
         val visitFactory = VisitViewModelFactory(visitRepository)
 
+        val noteRepository = NoteRepository(database.noteDao(), firestoreService)
+        val noteFactory = NoteViewModelFactory(noteRepository)
+
         setContent {
             FieldSenseTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -80,7 +87,8 @@ class MainActivity : ComponentActivity() {
                             MainScreen(
                                 email = authViewModel.getUserEmail(),
                                 visitViewModel = visitViewModel,
-                                onLogout = { authViewModel.signOut() }
+                                onLogout = { authViewModel.signOut() },
+                                noteFactory = noteFactory
                             )
                         }
                         else -> {
@@ -256,11 +264,22 @@ fun AuthenticationScreen(
 fun MainScreen(
     email: String,
     visitViewModel: VisitViewModel,
+    noteFactory: NoteViewModelFactory,
     onLogout: () -> Unit
 ) {
     val visits by visitViewModel.visits.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
-
+    var selectedVisit by remember { mutableStateOf<Visit?>(null) }
+    // Se tiver visita selecionada, mostra o ecrã de detalhe
+    if (selectedVisit != null) {
+        val noteViewModel: NoteViewModel = viewModel(factory = noteFactory)
+        VisitDetailScreen(
+            visit = selectedVisit!!,
+            noteViewModel = noteViewModel,
+            onBack = { selectedVisit = null }
+        )
+        return
+    }
     LaunchedEffect(Unit) {
         visitViewModel.syncPendingVisits()
     }
@@ -320,7 +339,8 @@ fun MainScreen(
                 items(visits) { visit ->
                     VisitCard(
                         visit = visit,
-                        onDelete = { visitViewModel.deleteVisit(visit.id) }
+                        onDelete = { visitViewModel.deleteVisit(visit.id) },
+                        onClick = { selectedVisit = visit }
                     )
                 }
             }
@@ -340,8 +360,9 @@ fun MainScreen(
     }
 }
 @Composable
-fun VisitCard(visit: Visit, onDelete: () -> Unit) {
+fun VisitCard(visit: Visit, onDelete: () -> Unit, onClick: () -> Unit) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
