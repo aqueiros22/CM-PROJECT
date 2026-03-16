@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -21,4 +22,7 @@ interface VisitDao {
 
     @Query("SELECT * FROM visits WHERE isSynced = 0")
     suspend fun getUnsyncedVisits(): List<Visit>
+
+    @Update
+    suspend fun updateVisit(visit: Visit)
 }

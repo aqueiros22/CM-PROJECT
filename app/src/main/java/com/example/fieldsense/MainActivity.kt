@@ -1,6 +1,10 @@
 package com.example.fieldsense
 
 import android.app.Activity
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkRequest
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -70,7 +74,7 @@ class MainActivity : ComponentActivity() {
 
         val database = AppDatabase.getDatabase(applicationContext)
         val firestoreService = FirestoreService()
-        val visitRepository = VisitRepository(database.visitDao(), firestoreService)
+        val visitRepository = VisitRepository(database.visitDao(), firestoreService, applicationContext)
         val visitFactory = VisitViewModelFactory(visitRepository)
 
         val noteRepository = NoteRepository(database.noteDao(), firestoreService)
@@ -330,6 +334,24 @@ fun MainScreen(
     }
     LaunchedEffect(Unit) {
         visitViewModel.syncPendingVisits()
+    }
+
+    DisposableEffect(Unit) {
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+        val networkCallback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                visitViewModel.onNetworkRestored()
+            }
+        }
+
+        val request = NetworkRequest.Builder().build()
+        connectivityManager.registerNetworkCallback(request, networkCallback)
+
+        onDispose {
+            connectivityManager.unregisterNetworkCallback(networkCallback)
+        }
     }
 
     Scaffold(

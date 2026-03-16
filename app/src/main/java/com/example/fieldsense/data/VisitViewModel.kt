@@ -33,6 +33,12 @@ class VisitViewModel(private val repository: VisitRepository) : ViewModel() {
             repository.syncPendingVisits()
         }
     }
+
+    fun onNetworkRestored() {
+        viewModelScope.launch {
+            repository.syncPendingVisits()
+        }
+    }
 }
 class VisitViewModelFactory(private val repository: VisitRepository) :
     ViewModelProvider.Factory {
