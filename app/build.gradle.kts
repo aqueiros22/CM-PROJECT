@@ -75,8 +75,10 @@ dependencies {
     ksp("androidx.room:room-compiler:$room_version")
 
     // Firestore
-
     implementation(platform("com.google.firebase:firebase-bom:33.9.0"))
     implementation("com.google.firebase:firebase-firestore")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
+
+    //loc
+    implementation("com.google.android.gms:play-services-location:21.2.0")
 }

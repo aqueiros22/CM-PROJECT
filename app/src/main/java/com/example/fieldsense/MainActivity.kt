@@ -38,21 +38,24 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.room.jarjarred.org.antlr.v4.codegen.model.Sync
 import com.example.fieldsense.data.AppDatabase
 import com.example.fieldsense.data.FirestoreService
 import com.example.fieldsense.data.Visit
 import com.example.fieldsense.data.VisitRepository
 import com.example.fieldsense.data.VisitViewModel
 import com.example.fieldsense.data.VisitViewModelFactory
-import com.example.fieldsense.data.Note
 import com.example.fieldsense.data.NoteRepository
 import com.example.fieldsense.data.NoteViewModel
 import com.example.fieldsense.data.NoteViewModelFactory
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import kotlinx.coroutines.launch
 
 
 class MainActivity : ComponentActivity() {
@@ -267,9 +270,54 @@ fun MainScreen(
     noteFactory: NoteViewModelFactory,
     onLogout: () -> Unit
 ) {
+    val context = LocalContext.current
     val visits by visitViewModel.visits.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
     var selectedVisit by remember { mutableStateOf<Visit?>(null) }
+
+    //loc
+    var fetchedLocation by remember { mutableStateOf("") }
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+
+    val coroutineScope = rememberCoroutineScope()
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+
+        if (fineLocationGranted || coarseLocationGranted) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+
+                fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                    .addOnSuccessListener { location ->
+                        if (location != null) {
+                            fetchedLocation = "${location.latitude}, ${location.longitude}"
+                            coroutineScope.launch {
+                                fetchedLocation = "Finding address..."
+                                showAddDialog = true
+
+                                fetchedLocation = getAddressFromLocation(
+                                    context,
+                                    location.latitude,
+                                    location.longitude
+                                )
+                            }
+                        } else {
+                            fetchedLocation = "" // Fallback se o GPS estiver desligado
+                            Toast.makeText(context, "Turn on GPS to get location", Toast.LENGTH_SHORT).show()
+                        }
+                        showAddDialog = true
+                    }
+            }
+        } else {
+            fetchedLocation = ""
+            showAddDialog = true
+        }
+    }
+
     // Se tiver visita selecionada, mostra o ecrã de detalhe
     if (selectedVisit != null) {
         val noteViewModel: NoteViewModel = viewModel(factory = noteFactory)
@@ -306,7 +354,15 @@ fun MainScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showAddDialog = true },
+                onClick = {
+                    // pedir permissão de loc
+                    locationPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    )
+                },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = MaterialTheme.shapes.medium
@@ -348,6 +404,7 @@ fun MainScreen(
 
         if (showAddDialog) {
             AddVisitDialog(
+                initialLocation = fetchedLocation, // Passamos a localização para o Diálogo!
                 onDismiss = { showAddDialog = false },
                 onConfirm = { code, name, loc ->
                     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -425,10 +482,18 @@ fun VisitCard(visit: Visit, onDelete: () -> Unit, onClick: () -> Unit) {
     }
 }
 @Composable
-fun AddVisitDialog(onDismiss: () -> Unit, onConfirm: (String, String, String) -> Unit) {
+fun AddVisitDialog(
+    initialLocation: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String, String) -> Unit
+){
     var code by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf("") }
+    var location by remember { mutableStateOf(initialLocation) }
+
+    LaunchedEffect(initialLocation) {
+        location = initialLocation
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -454,13 +519,6 @@ fun AddVisitDialog(onDismiss: () -> Unit, onConfirm: (String, String, String) ->
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Site Name") },
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = location,
-                    onValueChange = { location = it },
-                    label = { Text("Location") },
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth()
                 )
