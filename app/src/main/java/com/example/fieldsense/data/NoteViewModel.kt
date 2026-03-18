@@ -33,6 +33,11 @@ class NoteViewModel(private val repository: NoteRepository) : ViewModel() {
             repository.syncPendingNotes()
         }
     }
+    fun onNetworkRestored() {
+        viewModelScope.launch {
+            repository.syncPendingNotes()
+        }
+    }
 }
 
 class NoteViewModelFactory(private val repository: NoteRepository) : ViewModelProvider.Factory {

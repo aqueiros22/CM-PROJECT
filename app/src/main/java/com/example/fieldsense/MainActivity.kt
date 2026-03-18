@@ -346,6 +346,7 @@ fun MainScreen(
         val networkCallback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 visitViewModel.onNetworkRestored()
+                noteViewModel.onNetworkRestored()
             }
         }
 
