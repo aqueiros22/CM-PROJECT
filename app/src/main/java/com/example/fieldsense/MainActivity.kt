@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -57,6 +56,7 @@ import java.util.Locale
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -119,9 +119,9 @@ fun AuthenticationScreen(
     authState: AuthState,
     modifier: Modifier = Modifier
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var isLoginMode by remember { mutableStateOf(true) }
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+    var isLoginMode by rememberSaveable { mutableStateOf(true) }
 
     val context = LocalContext.current
 
@@ -277,13 +277,12 @@ fun MainScreen(
 ) {
     val context = LocalContext.current
     val visits by visitViewModel.visits.collectAsState()
-    var showAddDialog by remember { mutableStateOf(false) }
-    //var selectedVisit by remember { mutableStateOf<Visit?>(null) }
-    var selectedVisitId by rememberSaveable { mutableStateOf<Int?>(null) }
-    val selectedVisit = visits.find { it.id == selectedVisitId }
+    var showAddDialog by rememberSaveable { mutableStateOf(false) }
+    var selectedVisitId by rememberSaveable() { mutableStateOf<Int?>(null) }
+    var selectedVisit = visits.find { it.id == selectedVisitId }
 
     //loc
-    var fetchedLocation by remember { mutableStateOf("") }
+    var fetchedLocation by rememberSaveable { mutableStateOf("") }
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
     val coroutineScope = rememberCoroutineScope()
@@ -313,15 +312,16 @@ fun MainScreen(
                                 )
                             }
                         } else {
-                            fetchedLocation = "" // Fallback se o GPS estiver desligado
+                            fetchedLocation = "Location unavailable"
                             Toast.makeText(context, "Turn on GPS to get location", Toast.LENGTH_SHORT).show()
                         }
-                        showAddDialog = true
+                    }
+                    .addOnFailureListener {
+                        fetchedLocation = "Error fetching location"
                     }
             }
         } else {
-            fetchedLocation = ""
-            showAddDialog = true
+            fetchedLocation = "Permission denied"
         }
     }
 
@@ -380,6 +380,8 @@ fun MainScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
+                    fetchedLocation = "Fetching location..."
+                    showAddDialog = true
                     // pedir permissão de loc
                     locationPermissionLauncher.launch(
                         arrayOf(
@@ -512,9 +514,9 @@ fun AddVisitDialog(
     onDismiss: () -> Unit,
     onConfirm: (String, String, String) -> Unit
 ){
-    var code by remember { mutableStateOf("") }
-    var name by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf(initialLocation) }
+    var code by rememberSaveable { mutableStateOf("") }
+    var name by rememberSaveable { mutableStateOf("") }
+    var location by rememberSaveable { mutableStateOf(initialLocation) }
 
     LaunchedEffect(initialLocation) {
         location = initialLocation
@@ -547,12 +549,31 @@ fun AddVisitDialog(
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth()
                 )
+                OutlinedTextField(
+                    value = location,
+                    onValueChange = { location = it },
+                    label = { Text("Location") },
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        if (location == "Fetching location..." || location == "Finding address...") {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        }
+                    }
+                )
             }
         },
         confirmButton = {
             Button(
                 onClick = { onConfirm(code, name, location) },
-                enabled = code.isNotBlank() && name.isNotBlank() && location.isNotBlank(),
+                enabled = code.isNotBlank() &&
+                          name.isNotBlank() &&
+                          location.isNotBlank() &&
+                          location != "Fetching location..." &&
+                          location != "Finding address...",
                 shape = MaterialTheme.shapes.small
             ) {
                 Text("Save Visit")

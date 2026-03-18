@@ -16,6 +16,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,7 +35,7 @@ fun VisitDetailScreen(
     onBack: () -> Unit
 ) {
     val notes by noteViewModel.getNotesForVisit(visit.id).collectAsState()
-    var showAddNoteDialog by remember { mutableStateOf(false) }
+    var showAddNoteDialog by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         noteViewModel.syncPendingNotes()
     }
@@ -160,7 +161,7 @@ fun NoteCard(note: Note, onDelete: () -> Unit) {
 
 @Composable
 fun AddNoteDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
-    var content by remember { mutableStateOf("") }
+    var content by rememberSaveable { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
