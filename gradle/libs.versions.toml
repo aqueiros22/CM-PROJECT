@@ -12,6 +12,8 @@ uiText = "1.10.4"
 foundation = "1.10.4"
 firebaseFirestoreKtx = "26.1.1"
 roomExternalAntlr = "2.8.4"
+navigationRuntimeKtx = "2.9.7"
+navigationCompose = "2.9.7"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -32,6 +34,9 @@ androidx-compose-ui-text = { group = "androidx.compose.ui", name = "ui-text", ve
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 firebase-firestore-ktx = { group = "com.google.firebase", name = "firebase-firestore-ktx", version.ref = "firebaseFirestoreKtx" }
 androidx-room-external-antlr = { group = "androidx.room", name = "room-external-antlr", version.ref = "roomExternalAntlr" }
+androidx-navigation-runtime-ktx = { group = "androidx.navigation", name = "navigation-runtime-ktx", version.ref = "navigationRuntimeKtx" }
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+maplibre-compose = { module = "org.maplibre.compose:maplibre-compose", version = "0.12.1" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

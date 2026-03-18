@@ -19,8 +19,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,7 +41,6 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.room.jarjarred.org.antlr.v4.codegen.model.Sync
 import com.example.fieldsense.data.AppDatabase
 import com.example.fieldsense.data.FirestoreService
 import com.example.fieldsense.data.Visit
@@ -48,6 +50,13 @@ import com.example.fieldsense.data.VisitViewModelFactory
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import kotlin.String
+import androidx.compose.runtime.Composable
 
 
 
@@ -72,14 +81,15 @@ class MainActivity : ComponentActivity() {
 
                     val authViewModel: AuthViewModel = viewModel(factory = authFactory)
                     val visitViewModel: VisitViewModel = viewModel(factory = visitFactory)
-
+                    val locationViewModel : LocationViewModel = viewModel()
                     val authState by authViewModel.authState.collectAsState()
 
                     when (authState) {
                         is AuthState.Authenticated -> {
-                            MainScreen(
+                            NavigationBar (
                                 email = authViewModel.getUserEmail(),
                                 visitViewModel = visitViewModel,
+                                locationViewModel = locationViewModel,
                                 onLogout = { authViewModel.signOut() }
                             )
                         }
@@ -460,4 +470,92 @@ fun AddVisitDialog(onDismiss: () -> Unit, onConfirm: (String, String, String) ->
             }
         }
     )
+}
+
+
+
+enum class Destination(
+    val route: String,
+    val label: String,
+    val icon: ImageVector,
+    val contentDescription: String
+) {
+    MAIN("home", "", Icons.Default.Home, ""),
+    MAP("map", "", Icons.Default.LocationOn, ""),
+}
+
+@Composable
+fun AppNavHost(
+    navController: NavHostController,
+    startDestination: Destination,
+    email: String,
+    visitViewModel: VisitViewModel,
+    locationViewModel: LocationViewModel,
+    onLogout: () -> Unit,
+) {
+    NavHost(
+        navController,
+        startDestination = startDestination.route
+    ) {
+        Destination.entries.forEach { destination ->
+            composable(destination.route) {
+                when (destination) {
+                    Destination.MAIN -> MainScreen(
+                        email = email,
+                        visitViewModel = visitViewModel,
+                        onLogout = onLogout)
+                    Destination.MAP -> MapScreen(Modifier, locationViewModel)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NavigationBar(
+        modifier: Modifier = Modifier,
+        email: String,
+        visitViewModel: VisitViewModel,
+        locationViewModel: LocationViewModel,
+        onLogout: () -> Unit,) {
+    val navController = rememberNavController()
+    val startDestination = Destination.MAIN
+    var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }
+
+    Scaffold(
+        modifier = modifier,
+        bottomBar = {
+            NavigationBar(windowInsets = NavigationBarDefaults.windowInsets) {
+                Destination.entries.forEachIndexed { index, destination ->
+                    NavigationBarItem(
+                        selected = selectedDestination == index,
+                        onClick = {
+                            navController.navigate(route = destination.route)
+                            selectedDestination = index
+                        },
+                        icon = {
+                            Icon(
+                                destination.icon,
+                                contentDescription = destination.contentDescription
+                            )
+                        }
+
+                    )
+                }
+            }
+        }
+    ) { contentPadding ->
+        Box(
+            modifier = Modifier.padding(contentPadding)
+        ) {
+            AppNavHost(
+                navController,
+                startDestination,
+                email,
+                visitViewModel,
+                locationViewModel,
+                onLogout)
+        }
+
+    }
 }
