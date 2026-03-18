@@ -56,6 +56,7 @@ import java.util.Date
 import java.util.Locale
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -277,7 +278,9 @@ fun MainScreen(
     val context = LocalContext.current
     val visits by visitViewModel.visits.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
-    var selectedVisit by remember { mutableStateOf<Visit?>(null) }
+    //var selectedVisit by remember { mutableStateOf<Visit?>(null) }
+    var selectedVisitId by rememberSaveable { mutableStateOf<Int?>(null) }
+    val selectedVisit = visits.find { it.id == selectedVisitId }
 
     //loc
     var fetchedLocation by remember { mutableStateOf("") }
@@ -323,12 +326,12 @@ fun MainScreen(
     }
 
     // Se tiver visita selecionada, mostra o ecrã de detalhe
+    val noteViewModel: NoteViewModel = viewModel(factory = noteFactory)
     if (selectedVisit != null) {
-        val noteViewModel: NoteViewModel = viewModel(factory = noteFactory)
         VisitDetailScreen(
             visit = selectedVisit!!,
             noteViewModel = noteViewModel,
-            onBack = { selectedVisit = null }
+            onBack = { selectedVisitId = null }
         )
         return
     }
@@ -418,7 +421,7 @@ fun MainScreen(
                     VisitCard(
                         visit = visit,
                         onDelete = { visitViewModel.deleteVisit(visit.id) },
-                        onClick = { selectedVisit = visit }
+                        onClick = { selectedVisitId = visit.id }
                     )
                 }
             }
