@@ -55,6 +55,7 @@ import java.util.Date
 import java.util.Locale
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.LocationServices
@@ -118,9 +119,9 @@ fun AuthenticationScreen(
     authState: AuthState,
     modifier: Modifier = Modifier
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var isLoginMode by remember { mutableStateOf(true) }
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+    var isLoginMode by rememberSaveable { mutableStateOf(true) }
 
     val context = LocalContext.current
 
@@ -276,11 +277,12 @@ fun MainScreen(
 ) {
     val context = LocalContext.current
     val visits by visitViewModel.visits.collectAsState()
-    var showAddDialog by remember { mutableStateOf(false) }
-    var selectedVisit by remember { mutableStateOf<Visit?>(null) }
+    var showAddDialog by rememberSaveable { mutableStateOf(false) }
+    var selectedVisitId by rememberSaveable() { mutableStateOf<Int?>(null) }
+    var selectedVisit = visits.find { it.id == selectedVisitId }
 
     //loc
-    var fetchedLocation by remember { mutableStateOf("") }
+    var fetchedLocation by rememberSaveable { mutableStateOf("") }
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
     val coroutineScope = rememberCoroutineScope()
@@ -326,7 +328,7 @@ fun MainScreen(
         VisitDetailScreen(
             visit = selectedVisit!!,
             noteViewModel = noteViewModel,
-            onBack = { selectedVisit = null }
+            onBack = { selectedVisitId = null }
         )
         return
     }
@@ -418,7 +420,7 @@ fun MainScreen(
                     VisitCard(
                         visit = visit,
                         onDelete = { visitViewModel.deleteVisit(visit.id) },
-                        onClick = { selectedVisit = visit }
+                        onClick = { selectedVisitId = visit.id }
                     )
                 }
             }
@@ -509,9 +511,9 @@ fun AddVisitDialog(
     onDismiss: () -> Unit,
     onConfirm: (String, String, String) -> Unit
 ){
-    var code by remember { mutableStateOf("") }
-    var name by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf(initialLocation) }
+    var code by rememberSaveable { mutableStateOf("") }
+    var name by rememberSaveable { mutableStateOf("") }
+    var location by rememberSaveable { mutableStateOf(initialLocation) }
 
     LaunchedEffect(initialLocation) {
         location = initialLocation
