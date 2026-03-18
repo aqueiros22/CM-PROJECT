@@ -85,4 +85,7 @@ dependencies {
 
     // Maplibre
     implementation(libs.maplibre.compose)
+
+    //loc
+    implementation("com.google.android.gms:play-services-location:21.2.0")
 }

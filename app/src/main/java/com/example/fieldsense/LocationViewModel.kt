@@ -13,4 +13,6 @@ class LocationViewModel: ViewModel() {
         _location.value = newLocation
     }
 
+    fun search(query: String) {}
+
 }

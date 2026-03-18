@@ -1,6 +1,10 @@
 package com.example.fieldsense
 
 import android.app.Activity
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkRequest
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -41,15 +45,25 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.room.jarjarred.org.antlr.v4.codegen.model.Sync
 import com.example.fieldsense.data.AppDatabase
 import com.example.fieldsense.data.FirestoreService
 import com.example.fieldsense.data.Visit
 import com.example.fieldsense.data.VisitRepository
 import com.example.fieldsense.data.VisitViewModel
 import com.example.fieldsense.data.VisitViewModelFactory
+import com.example.fieldsense.data.NoteRepository
+import com.example.fieldsense.data.NoteViewModel
+import com.example.fieldsense.data.NoteViewModelFactory
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -72,8 +86,11 @@ class MainActivity : ComponentActivity() {
 
         val database = AppDatabase.getDatabase(applicationContext)
         val firestoreService = FirestoreService()
-        val visitRepository = VisitRepository(database.visitDao(), firestoreService)
+        val visitRepository = VisitRepository(database.visitDao(), firestoreService, applicationContext)
         val visitFactory = VisitViewModelFactory(visitRepository)
+
+        val noteRepository = NoteRepository(database.noteDao(), firestoreService)
+        val noteFactory = NoteViewModelFactory(noteRepository)
 
         setContent {
             FieldSenseTheme {
@@ -89,8 +106,9 @@ class MainActivity : ComponentActivity() {
                             NavigationBar (
                                 email = authViewModel.getUserEmail(),
                                 visitViewModel = visitViewModel,
+                                onLogout = { authViewModel.signOut() },
                                 locationViewModel = locationViewModel,
-                                onLogout = { authViewModel.signOut() }
+                                noteFactory = noteFactory
                             )
                         }
                         else -> {
@@ -266,13 +284,87 @@ fun AuthenticationScreen(
 fun MainScreen(
     email: String,
     visitViewModel: VisitViewModel,
+    noteFactory: NoteViewModelFactory,
     onLogout: () -> Unit
 ) {
+    val context = LocalContext.current
     val visits by visitViewModel.visits.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var selectedVisit by remember { mutableStateOf<Visit?>(null) }
 
+    //loc
+    var fetchedLocation by remember { mutableStateOf("") }
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+
+    val coroutineScope = rememberCoroutineScope()
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+
+        if (fineLocationGranted || coarseLocationGranted) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+
+                fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                    .addOnSuccessListener { location ->
+                        if (location != null) {
+                            fetchedLocation = "${location.latitude}, ${location.longitude}"
+                            coroutineScope.launch {
+                                fetchedLocation = "Finding address..."
+                                showAddDialog = true
+
+                                fetchedLocation = getAddressFromLocation(
+                                    context,
+                                    location.latitude,
+                                    location.longitude
+                                )
+                            }
+                        } else {
+                            fetchedLocation = "" // Fallback se o GPS estiver desligado
+                            Toast.makeText(context, "Turn on GPS to get location", Toast.LENGTH_SHORT).show()
+                        }
+                        showAddDialog = true
+                    }
+            }
+        } else {
+            fetchedLocation = ""
+            showAddDialog = true
+        }
+    }
+
+    // Se tiver visita selecionada, mostra o ecrã de detalhe
+    if (selectedVisit != null) {
+        val noteViewModel: NoteViewModel = viewModel(factory = noteFactory)
+        VisitDetailScreen(
+            visit = selectedVisit!!,
+            noteViewModel = noteViewModel,
+            onBack = { selectedVisit = null }
+        )
+        return
+    }
     LaunchedEffect(Unit) {
         visitViewModel.syncPendingVisits()
+    }
+
+    DisposableEffect(Unit) {
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+        val networkCallback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                visitViewModel.onNetworkRestored()
+            }
+        }
+
+        val request = NetworkRequest.Builder().build()
+        connectivityManager.registerNetworkCallback(request, networkCallback)
+
+        onDispose {
+            connectivityManager.unregisterNetworkCallback(networkCallback)
+        }
     }
 
     Scaffold(
@@ -297,7 +389,15 @@ fun MainScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showAddDialog = true },
+                onClick = {
+                    // pedir permissão de loc
+                    locationPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    )
+                },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = MaterialTheme.shapes.medium
@@ -330,7 +430,8 @@ fun MainScreen(
                 items(visits) { visit ->
                     VisitCard(
                         visit = visit,
-                        onDelete = { visitViewModel.deleteVisit(visit.id) }
+                        onDelete = { visitViewModel.deleteVisit(visit.id) },
+                        onClick = { selectedVisit = visit }
                     )
                 }
             }
@@ -338,6 +439,7 @@ fun MainScreen(
 
         if (showAddDialog) {
             AddVisitDialog(
+                initialLocation = fetchedLocation, // Passamos a localização para o Diálogo!
                 onDismiss = { showAddDialog = false },
                 onConfirm = { code, name, loc ->
                     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -350,8 +452,9 @@ fun MainScreen(
     }
 }
 @Composable
-fun VisitCard(visit: Visit, onDelete: () -> Unit) {
+fun VisitCard(visit: Visit, onDelete: () -> Unit, onClick: () -> Unit) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -414,10 +517,18 @@ fun VisitCard(visit: Visit, onDelete: () -> Unit) {
     }
 }
 @Composable
-fun AddVisitDialog(onDismiss: () -> Unit, onConfirm: (String, String, String) -> Unit) {
+fun AddVisitDialog(
+    initialLocation: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String, String) -> Unit
+){
     var code by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf("") }
+    var location by remember { mutableStateOf(initialLocation) }
+
+    LaunchedEffect(initialLocation) {
+        location = initialLocation
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -443,13 +554,6 @@ fun AddVisitDialog(onDismiss: () -> Unit, onConfirm: (String, String, String) ->
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Site Name") },
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = location,
-                    onValueChange = { location = it },
-                    label = { Text("Location") },
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -492,6 +596,7 @@ fun AppNavHost(
     visitViewModel: VisitViewModel,
     locationViewModel: LocationViewModel,
     onLogout: () -> Unit,
+    noteFactory: NoteViewModelFactory
 ) {
     NavHost(
         navController,
@@ -503,7 +608,8 @@ fun AppNavHost(
                     Destination.MAIN -> MainScreen(
                         email = email,
                         visitViewModel = visitViewModel,
-                        onLogout = onLogout)
+                        onLogout = onLogout,
+                        noteFactory =  noteFactory)
                     Destination.MAP -> MapScreen(Modifier, locationViewModel)
                 }
             }
@@ -517,7 +623,8 @@ fun NavigationBar(
         email: String,
         visitViewModel: VisitViewModel,
         locationViewModel: LocationViewModel,
-        onLogout: () -> Unit,) {
+        onLogout: () -> Unit,
+        noteFactory: NoteViewModelFactory) {
     val navController = rememberNavController()
     val startDestination = Destination.MAIN
     var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }
@@ -554,7 +661,8 @@ fun NavigationBar(
                 email,
                 visitViewModel,
                 locationViewModel,
-                onLogout)
+                onLogout,
+                noteFactory)
         }
 
     }
