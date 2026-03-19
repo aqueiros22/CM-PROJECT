@@ -31,6 +31,18 @@ class NoteRepository(
         }
     }
 
+    suspend fun updateNote(note: Note) {
+        val updatedNote = note.copy(isSynced = false)
+        noteDao.updateNote(updatedNote)
+        try {
+            val syncedNote = updatedNote.copy(isSynced = true)
+            firestoreService.uploadNote(syncedNote)
+            noteDao.updateNote(syncedNote)
+        } catch (e: Exception) {
+            Log.e("NoteRepository", "Cloud update failed, stored locally only", e)
+        }
+    }
+
     suspend fun syncPendingNotes() {
         val pendingNotes = noteDao.getUnsyncedNotes()
 

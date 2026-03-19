@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.fieldsense.data.Note
 import com.example.fieldsense.data.Visit
@@ -36,8 +37,18 @@ fun VisitDetailScreen(
 ) {
     val notes by noteViewModel.getNotesForVisit(visit.id).collectAsState()
     var showAddNoteDialog by rememberSaveable { mutableStateOf(false) }
+    var selectedNoteId by rememberSaveable { mutableStateOf<Int?>(null) }
+    val selectedNote = notes.find { it.id == selectedNoteId }
     LaunchedEffect(Unit) {
         noteViewModel.syncPendingNotes()
+    }
+    if (selectedNote != null) {
+        NoteDetailScreen(
+            note = selectedNote,
+            noteViewModel = noteViewModel,
+            onBack = { selectedNoteId = null }
+        )
+        return
     }
     Scaffold(
         topBar = {
@@ -107,7 +118,8 @@ fun VisitDetailScreen(
                     items(notes) { note ->
                         NoteCard(
                             note = note,
-                            onDelete = { noteViewModel.deleteNote(note) }
+                            onDelete = { noteViewModel.deleteNote(note) },
+                            onClick = { selectedNoteId = note.id }
                         )
                     }
                 }
@@ -127,8 +139,9 @@ fun VisitDetailScreen(
 }
 
 @Composable
-fun NoteCard(note: Note, onDelete: () -> Unit) {
+fun NoteCard(note: Note, onDelete: () -> Unit, onClick: () -> Unit) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -147,7 +160,12 @@ fun NoteCard(note: Note, onDelete: () -> Unit) {
             )
             Spacer(modifier = Modifier.padding(8.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(note.content, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    note.content,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Text(note.date, style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
