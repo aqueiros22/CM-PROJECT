@@ -53,12 +53,6 @@ import org.maplibre.spatialk.geojson.Position
 import kotlinx.coroutines.launch
 @Composable
 fun MapScreen(modifier: Modifier = Modifier, viewModel: LocationViewModel) {
-/*    Box(modifier = modifier.fillMaxSize()) {
-        MaplibreMap(
-            modifier = Modifier,
-            baseStyle = BaseStyle.Uri("https://api.maptiler.com/maps/hybrid-v4/style.json?key=PM5n8PfnTJ23rHV0J4bb")
-        )
-    }*/
 
     val context = LocalContext.current
     val myLocationHelper = LocationHelper(context)
@@ -95,7 +89,7 @@ fun DisplayLocation(
                 cameraState.animateTo(
                     CameraPosition(
                         target = Position(longitude, latitude),
-                        zoom = 14.0
+                        zoom = 16.0
                     )
                 )
             }
@@ -141,7 +135,7 @@ fun DisplayLocation(
 
         MaplibreMap(
             modifier = Modifier,
-            baseStyle = BaseStyle.Uri("https://api.maptiler.com/maps/hybrid-v4/style.json?key=PM5n8PfnTJ23rHV0J4bb"),
+            baseStyle = BaseStyle.Uri("https://api.maptiler.com/maps/hybrid-v4/style.json?key=${BuildConfig.MAPTILER_API_KEY}"),
             cameraState = cameraState
         ) {
             location?.let { latLng ->

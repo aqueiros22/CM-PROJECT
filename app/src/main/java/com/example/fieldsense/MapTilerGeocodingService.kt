@@ -1,5 +1,6 @@
 package com.example.fieldsense
 
+
 import android.util.Log
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -23,7 +24,7 @@ data class MapTilerFeature(
 )
 
 class MapTilerGeocodingService {
-    private val apiKey = "PM5n8PfnTJ23rHV0J4bb"
+    private val apiKey = BuildConfig.MAPTILER_API_KEY
     private val client = HttpClient(Android) {
         install(ContentNegotiation) {
             json(Json {

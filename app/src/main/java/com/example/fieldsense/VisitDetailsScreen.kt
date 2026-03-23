@@ -6,6 +6,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -14,10 +16,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.fieldsense.data.Note
 import com.example.fieldsense.data.Visit
@@ -31,9 +36,19 @@ fun VisitDetailScreen(
     onBack: () -> Unit
 ) {
     val notes by noteViewModel.getNotesForVisit(visit.id).collectAsState()
-    var showAddNoteDialog by remember { mutableStateOf(false) }
+    var showAddNoteDialog by rememberSaveable { mutableStateOf(false) }
+    var selectedNoteId by rememberSaveable { mutableStateOf<Int?>(null) }
+    val selectedNote = notes.find { it.id == selectedNoteId }
     LaunchedEffect(Unit) {
         noteViewModel.syncPendingNotes()
+    }
+    if (selectedNote != null) {
+        NoteDetailScreen(
+            note = selectedNote,
+            noteViewModel = noteViewModel,
+            onBack = { selectedNoteId = null }
+        )
+        return
     }
     Scaffold(
         topBar = {
@@ -71,6 +86,7 @@ fun VisitDetailScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -102,7 +118,8 @@ fun VisitDetailScreen(
                     items(notes) { note ->
                         NoteCard(
                             note = note,
-                            onDelete = { noteViewModel.deleteNote(note) }
+                            onDelete = { noteViewModel.deleteNote(note) },
+                            onClick = { selectedNoteId = note.id }
                         )
                     }
                 }
@@ -122,10 +139,12 @@ fun VisitDetailScreen(
 }
 
 @Composable
-fun NoteCard(note: Note, onDelete: () -> Unit) {
+fun NoteCard(note: Note, onDelete: () -> Unit, onClick: () -> Unit) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
@@ -133,8 +152,20 @@ fun NoteCard(note: Note, onDelete: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Icon(
+                imageVector = if (note.isSynced) Icons.Filled.Check else Icons.Filled.Build,
+                contentDescription = if (note.isSynced) "Synced" else "Pending Sync",
+                modifier = Modifier.size(16.dp),
+                tint = if (note.isSynced) Color(0xFF4CAF50) else Color.Gray
+            )
+            Spacer(modifier = Modifier.padding(8.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(note.content, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    note.content,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Text(note.date, style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -148,7 +179,7 @@ fun NoteCard(note: Note, onDelete: () -> Unit) {
 
 @Composable
 fun AddNoteDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
-    var content by remember { mutableStateOf("") }
+    var content by rememberSaveable { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
