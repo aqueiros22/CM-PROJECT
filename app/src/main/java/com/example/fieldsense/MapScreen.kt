@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import android.Manifest
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -24,7 +25,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -37,7 +37,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
-import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonObject
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
@@ -82,11 +81,29 @@ fun DisplayLocation(
             zoom = 5.0
         )
     )
+    val coroutineScope = rememberCoroutineScope()
+
     val textFieldState: TextFieldState = rememberTextFieldState()
     val onSearch: (String) -> Unit =  { query -> viewModel.search(query) }
-    val searchResults: List<String> = listOf("Lisboa, Portugal", "Porto, Portugal", "Coimbra, Portugal")
+    val searchResults: List<String> = viewModel.searchResults.map { it.placeName }
+    val onResultSelected = { placeName: String ->
+        val feature = viewModel.searchResults.find { it.placeName == placeName }
+        feature?.let {
+            val longitude = feature.center[0]
+            val latitude = feature.center[1]
+            coroutineScope.launch {
+                cameraState.animateTo(
+                    CameraPosition(
+                        target = Position(longitude, latitude),
+                        zoom = 14.0
+                    )
+                )
+            }
+        } ?: run {
+            Toast.makeText(context, "Location not found, please try again", Toast.LENGTH_LONG).show()
+        }
+    }
 
-    val coroutineScope = rememberCoroutineScope()
     val requestPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
         onResult = { permissions ->
@@ -151,7 +168,7 @@ fun DisplayLocation(
 
     }
 
-    SimpleSearchBar(textFieldState, onSearch, searchResults)
+    SimpleSearchBar(textFieldState, onSearch, searchResults, viewModel = viewModel, onResultSelected = onResultSelected)
     Column( modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Bottom
@@ -203,7 +220,9 @@ fun SimpleSearchBar(
     textFieldState: TextFieldState,
     onSearch: (String) -> Unit,
     searchResults: List<String>,
-    modifier: Modifier = Modifier
+    onResultSelected: (String) -> Any,
+    modifier: Modifier = Modifier,
+    viewModel: LocationViewModel,
 ) {
     // Controls expansion state of the search bar
     var expanded by rememberSaveable{ mutableStateOf(false)}
@@ -220,10 +239,14 @@ fun SimpleSearchBar(
             inputField = {
                 SearchBarDefaults.InputField(
                     query = textFieldState.text.toString(),
-                    onQueryChange = { textFieldState.edit { replace(0, length, it) } },
+                    onQueryChange = {
+                        textFieldState.edit { replace(0, length, it) }
+                        viewModel.clearResults()
+                                    },
                     onSearch = {
+                        viewModel.clearResults()
                         onSearch(textFieldState.text.toString())
-                        expanded = false
+                        Log.d("SearchBar", "Search results: $searchResults")
                     },
                     expanded = expanded,
                     onExpandedChange = { expanded = it },
@@ -242,6 +265,8 @@ fun SimpleSearchBar(
                             .clickable {
                                 textFieldState.edit { replace(0, length, result) }
                                 expanded = false
+
+                                onResultSelected(result)
                             }
                             .fillMaxWidth()
                     )
