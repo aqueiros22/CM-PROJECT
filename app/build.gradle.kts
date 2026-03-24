@@ -107,4 +107,7 @@ dependencies {
 
     //loc
     implementation("com.google.android.gms:play-services-location:21.2.0")
+
+    //icons
+    implementation("androidx.compose.material:material-icons-extended")
 }
