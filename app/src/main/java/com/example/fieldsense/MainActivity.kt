@@ -44,7 +44,6 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.room.jarjarred.org.antlr.v4.codegen.model.Sync
 import com.example.fieldsense.data.AppDatabase
 import com.example.fieldsense.data.FirestoreService
 import com.example.fieldsense.data.Visit
@@ -59,7 +58,6 @@ import java.util.Date
 import java.util.Locale
 import android.Manifest
 import android.content.pm.PackageManager
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.LocationServices
@@ -70,8 +68,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import kotlin.String
-import androidx.compose.runtime.Composable
 
 
 
@@ -87,7 +83,7 @@ class MainActivity : ComponentActivity() {
 
         val database = AppDatabase.getDatabase(applicationContext)
         val firestoreService = FirestoreService()
-        val visitRepository = VisitRepository(database.visitDao(), firestoreService, applicationContext)
+        val visitRepository = VisitRepository(database.visitDao(), database.noteDao(), firestoreService, applicationContext)
         val visitFactory = VisitViewModelFactory(visitRepository)
 
         val noteRepository = NoteRepository(database.noteDao(), firestoreService)
@@ -343,6 +339,7 @@ fun MainScreen(
     if (selectedVisit != null) {
         VisitDetailScreen(
             visit = selectedVisit!!,
+            visitViewModel = visitViewModel,
             noteViewModel = noteViewModel,
             onBack = { selectedVisitId = null }
         )

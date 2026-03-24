@@ -22,6 +22,12 @@ class VisitViewModel(private val repository: VisitRepository) : ViewModel() {
         }
     }
 
+    fun updateVisit(visit: Visit) {
+        viewModelScope.launch {
+            repository.update(visit)
+        }
+    }
+
     fun deleteVisit(visitId: Int) {
         viewModelScope.launch {
             repository.delete(visitId)

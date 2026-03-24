@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,21 +28,26 @@ import androidx.compose.ui.unit.dp
 import com.example.fieldsense.data.Note
 import com.example.fieldsense.data.Visit
 import com.example.fieldsense.data.NoteViewModel
+import com.example.fieldsense.data.VisitViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VisitDetailScreen(
     visit: Visit,
+    visitViewModel: VisitViewModel,
     noteViewModel: NoteViewModel,
     onBack: () -> Unit
 ) {
     val notes by noteViewModel.getNotesForVisit(visit.id).collectAsState()
     var showAddNoteDialog by rememberSaveable { mutableStateOf(false) }
+    var showEditVisitDialog by rememberSaveable { mutableStateOf(false) }
     var selectedNoteId by rememberSaveable { mutableStateOf<Int?>(null) }
     val selectedNote = notes.find { it.id == selectedNoteId }
+
     LaunchedEffect(Unit) {
         noteViewModel.syncPendingNotes()
     }
+
     if (selectedNote != null) {
         NoteDetailScreen(
             note = selectedNote,
@@ -50,6 +56,7 @@ fun VisitDetailScreen(
         )
         return
     }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -60,6 +67,11 @@ fun VisitDetailScreen(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showEditVisitDialog = true }) {
+                        Icon(Icons.Filled.Edit, contentDescription = "Editar Visita")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -100,9 +112,9 @@ fun VisitDetailScreen(
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    Text(visit.date, style = MaterialTheme.typography.bodyLarge)
-                    Text(visit.location, style = MaterialTheme.typography.bodyLarge)
-                    Text(visit.code, style = MaterialTheme.typography.bodyLarge)
+                    Text("Data: ${visit.date}", style = MaterialTheme.typography.bodyLarge)
+                    Text("Local: ${visit.location}", style = MaterialTheme.typography.bodyLarge)
+                    Text("Código: ${visit.code}", style = MaterialTheme.typography.bodyLarge)
                 }
             }
 
@@ -135,7 +147,74 @@ fun VisitDetailScreen(
                 }
             )
         }
+
+        if (showEditVisitDialog) {
+            EditVisitDialog(
+                visit = visit,
+                onDismiss = { showEditVisitDialog = false },
+                onConfirm = { updatedVisit ->
+                    visitViewModel.updateVisit(updatedVisit)
+                    showEditVisitDialog = false
+                }
+            )
+        }
     }
+}
+
+@Composable
+fun EditVisitDialog(
+    visit: Visit,
+    onDismiss: () -> Unit,
+    onConfirm: (Visit) -> Unit
+) {
+    var code by rememberSaveable { mutableStateOf(visit.code) }
+    var name by rememberSaveable { mutableStateOf(visit.name) }
+    var location by rememberSaveable { mutableStateOf(visit.location) }
+    var date by rememberSaveable { mutableStateOf(visit.date) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Editar Visita") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nome do Local") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = { code = it },
+                    label = { Text("Código") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = location,
+                    onValueChange = { location = it },
+                    label = { Text("Localização") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = date,
+                    onValueChange = { date = it },
+                    label = { Text("Data") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onConfirm(visit.copy(name = name, code = code, location = location, date = date))
+                },
+                enabled = name.isNotBlank() && code.isNotBlank() && location.isNotBlank() && date.isNotBlank()
+            ) { Text("Guardar") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
 }
 
 @Composable

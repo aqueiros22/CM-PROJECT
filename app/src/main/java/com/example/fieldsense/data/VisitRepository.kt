@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
 
 class VisitRepository(
     private val visitDao: VisitDao,
+    private val noteDao: NoteDao,
     private val firestoreService: FirestoreService,
     private val context: Context
 ) {
@@ -31,9 +32,35 @@ class VisitRepository(
         }
     }
 
-    suspend fun delete(visitId: Int) {
-        visitDao.deleteVisitById(visitId)
+    suspend fun update(visit: Visit) {
+        visitDao.updateVisit(visit.copy(isSynced = false))
+
+        if (!isInternetAvailable()) {
+            return
+        }
+
         try {
+            val syncedVisit = buildSyncedVisit(visit)
+            firestoreService.uploadVisit(syncedVisit)
+            visitDao.updateVisit(syncedVisit)
+        } catch (e: Exception) {
+            Log.e("Repository", "Cloud update sync failed", e)
+        }
+    }
+
+    suspend fun delete(visitId: Int) {
+        // Obter todas as notas associadas a esta visita antes de as apagar localmente
+        val notesToDelete = noteDao.getNotesForVisitSync(visitId)
+
+        // Apagar visita localmente (o Cascade Delete no Room tratará das notas localmente)
+        visitDao.deleteVisitById(visitId)
+
+        try {
+            // Apagar cada nota no Firestore
+            notesToDelete.forEach { note ->
+                firestoreService.deleteNote(note)
+            }
+            // Apagar a visita no Firestore
             firestoreService.deleteVisit(visitId)
         } catch (e: Exception) {
             Log.e("Repository", "Cloud delete failed", e)

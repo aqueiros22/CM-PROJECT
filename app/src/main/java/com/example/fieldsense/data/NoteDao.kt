@@ -9,6 +9,9 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE visitId = :visitId ORDER BY id DESC")
     fun getNotesForVisit(visitId: Int): Flow<List<Note>>
 
+    @Query("SELECT * FROM notes WHERE visitId = :visitId")
+    suspend fun getNotesForVisitSync(visitId: Int): List<Note>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNote(note: Note): Long
 
