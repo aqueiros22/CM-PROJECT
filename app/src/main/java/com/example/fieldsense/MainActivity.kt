@@ -98,9 +98,16 @@ class MainActivity : ComponentActivity() {
                     val locationViewModel : LocationViewModel = viewModel()
                     val authState by authViewModel.authState.collectAsState()
 
+                    LaunchedEffect(authState) {
+                        if (authState is AuthState.Authenticated) {
+                            visitViewModel.setUserId(authRepository.getCurrentUserId())
+                        }
+                    }
+
                     when (authState) {
                         is AuthState.Authenticated -> {
                             NavigationBar (
+                                userId = authRepository.getCurrentUserId(),
                                 email = authViewModel.getUserEmail(),
                                 visitViewModel = visitViewModel,
                                 onLogout = { authViewModel.signOut() },
@@ -279,6 +286,7 @@ fun AuthenticationScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
+    userId: String,
     email: String,
     visitViewModel: VisitViewModel,
     noteFactory: NoteViewModelFactory,
@@ -336,6 +344,10 @@ fun MainScreen(
 
     // Se tiver visita selecionada, mostra o ecrã de detalhe
     val noteViewModel: NoteViewModel = viewModel(factory = noteFactory)
+    LaunchedEffect(userId) {
+        noteViewModel.setUserId(userId)
+    }
+
     if (selectedVisit != null) {
         VisitDetailScreen(
             visit = selectedVisit!!,
@@ -447,7 +459,7 @@ fun MainScreen(
                 onConfirm = { code, name, loc ->
                     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
                     val currentDate = sdf.format(Date())
-                    visitViewModel.insertVisit(code, name, currentDate, loc)
+                    visitViewModel.insertVisit(userId, code, name, currentDate, loc)
                     showAddDialog = false
                 }
             )
@@ -614,6 +626,7 @@ enum class Destination(
 fun AppNavHost(
     navController: NavHostController,
     startDestination: Destination,
+    userId: String,
     email: String,
     visitViewModel: VisitViewModel,
     locationViewModel: LocationViewModel,
@@ -628,6 +641,7 @@ fun AppNavHost(
             composable(destination.route) {
                 when (destination) {
                     Destination.MAIN -> MainScreen(
+                        userId = userId,
                         email = email,
                         visitViewModel = visitViewModel,
                         onLogout = onLogout,
@@ -642,6 +656,7 @@ fun AppNavHost(
 @Composable
 fun NavigationBar(
         modifier: Modifier = Modifier,
+        userId: String,
         email: String,
         visitViewModel: VisitViewModel,
         locationViewModel: LocationViewModel,
@@ -680,6 +695,7 @@ fun NavigationBar(
             AppNavHost(
                 navController,
                 startDestination,
+                userId,
                 email,
                 visitViewModel,
                 locationViewModel,

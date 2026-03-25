@@ -15,6 +15,8 @@ class VisitRepository(
 ) {
     val allVisits: Flow<List<Visit>> = visitDao.getAllVisits()
 
+    fun getVisitsByUser(userId: String): Flow<List<Visit>> = visitDao.getVisitsByUser(userId)
+
     suspend fun insert(visit: Visit) {
         val generatedId = visitDao.insertVisit(visit)
         val localVisit = visit.copy(id = generatedId.toInt(), isSynced = false)
@@ -67,8 +69,8 @@ class VisitRepository(
         }
     }
 
-    suspend fun syncPendingVisits() {
-        val pendingVisits = visitDao.getUnsyncedVisits()
+    suspend fun syncPendingVisits(userId: String) {
+        val pendingVisits = visitDao.getUnsyncedVisits(userId)
 
         pendingVisits.forEach { visit ->
             try {

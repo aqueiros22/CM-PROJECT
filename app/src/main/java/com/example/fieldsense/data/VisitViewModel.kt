@@ -3,21 +3,38 @@ package com.example.fieldsense.data
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class VisitViewModel(private val repository: VisitRepository) : ViewModel() {
 
-    val visits = repository.allVisits.stateIn(
+    private val _userId = MutableStateFlow<String?>(null)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val visits = _userId.flatMapLatest { uid ->
+        if (uid == null) {
+            flowOf(emptyList<Visit>())
+        } else {
+            repository.getVisitsByUser(uid)
+        }
+    }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
         emptyList()
     )
 
-    fun insertVisit(code: String, name: String, date: String, location: String) {
+    fun setUserId(userId: String) {
+        _userId.value = userId
+    }
+
+    fun insertVisit(userId: String, code: String, name: String, date: String, location: String) {
         viewModelScope.launch {
-            val visit = Visit(code = code, name = name, date = date, location = location)
+            val visit = Visit(userId = userId, code = code, name = name, date = date, location = location)
             repository.insert(visit)
         }
     }
@@ -36,14 +53,14 @@ class VisitViewModel(private val repository: VisitRepository) : ViewModel() {
 
     fun syncPendingVisits() {
         viewModelScope.launch {
-            repository.syncPendingVisits()
+            _userId.value?.let { uid ->
+                repository.syncPendingVisits(uid)
+            }
         }
     }
 
     fun onNetworkRestored() {
-        viewModelScope.launch {
-            repository.syncPendingVisits()
-        }
+        syncPendingVisits()
     }
 }
 class VisitViewModelFactory(private val repository: VisitRepository) :

@@ -21,6 +21,6 @@ interface NoteDao {
     @Update
     suspend fun updateNote(note: Note)
 
-    @Query("SELECT * FROM notes WHERE isSynced = 0")
-    suspend fun getUnsyncedNotes(): List<Note>
+    @Query("SELECT * FROM notes WHERE userId = :userId AND isSynced = 0")
+    suspend fun getUnsyncedNotes(userId: String): List<Note>
 }

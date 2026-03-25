@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface VisitDao {
 
+    @Query("SELECT * FROM visits WHERE userId = :userId ORDER BY id DESC")
+    fun getVisitsByUser(userId: String): Flow<List<Visit>>
 
     @Query("SELECT * FROM visits ORDER BY id DESC")
     fun getAllVisits(): Flow<List<Visit>>
@@ -20,8 +22,8 @@ interface VisitDao {
     @Query("DELETE FROM visits WHERE id = :visitId")
     suspend fun deleteVisitById(visitId: Int)
 
-    @Query("SELECT * FROM visits WHERE isSynced = 0")
-    suspend fun getUnsyncedVisits(): List<Visit>
+    @Query("SELECT * FROM visits WHERE userId = :userId AND isSynced = 0")
+    suspend fun getUnsyncedVisits(userId: String): List<Visit>
 
     @Update
     suspend fun updateVisit(visit: Visit)
