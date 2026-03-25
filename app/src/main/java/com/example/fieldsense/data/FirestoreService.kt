@@ -31,4 +31,20 @@ class FirestoreService {
     suspend fun deleteNote(note: Note) {
         getNotesCollection(note.visitId)?.document(note.id.toString())?.delete()?.await()
     }
+    private fun getAttachmentsCollection(visitId: Int) =
+        getUserVisitsCollection()?.document(visitId.toString())?.collection("attachments")
+
+    suspend fun uploadAttachment(attachment: Attachment) {
+        getAttachmentsCollection(attachment.visitId)
+            ?.document(attachment.id.toString())
+            ?.set(attachment)
+            ?.await()
+    }
+
+    suspend fun deleteAttachment(attachment: Attachment) {
+        getAttachmentsCollection(attachment.visitId)
+            ?.document(attachment.id.toString())
+            ?.delete()
+            ?.await()
+    }
 }

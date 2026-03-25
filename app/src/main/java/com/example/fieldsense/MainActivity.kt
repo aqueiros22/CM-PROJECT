@@ -58,6 +58,10 @@ import android.content.pm.PackageManager
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
+import com.example.fieldsense.data.AttachmentRepository
+import com.example.fieldsense.data.AttachmentViewModel
+import com.example.fieldsense.data.AttachmentViewModelFactory
+import com.example.fieldsense.data.FirebaseStorageService
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.launch
@@ -75,11 +79,16 @@ class MainActivity : ComponentActivity() {
 
         val database = AppDatabase.getDatabase(applicationContext)
         val firestoreService = FirestoreService()
+
         val visitRepository = VisitRepository(database.visitDao(), firestoreService, applicationContext)
         val visitFactory = VisitViewModelFactory(visitRepository)
 
         val noteRepository = NoteRepository(database.noteDao(), firestoreService)
         val noteFactory = NoteViewModelFactory(noteRepository)
+
+        val storageService = FirebaseStorageService()
+        val attachmentRepository = AttachmentRepository(database.attachmentDao(), firestoreService, storageService)
+        val attachmentFactory = AttachmentViewModelFactory(attachmentRepository)
 
         setContent {
             FieldSenseTheme {
@@ -95,6 +104,7 @@ class MainActivity : ComponentActivity() {
                             MainScreen(
                                 email = authViewModel.getUserEmail(),
                                 visitViewModel = visitViewModel,
+                                attachmentFactory = attachmentFactory,
                                 onLogout = { authViewModel.signOut() },
                                 noteFactory = noteFactory
                             )
@@ -273,6 +283,7 @@ fun MainScreen(
     email: String,
     visitViewModel: VisitViewModel,
     noteFactory: NoteViewModelFactory,
+    attachmentFactory: AttachmentViewModelFactory,
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
@@ -327,10 +338,12 @@ fun MainScreen(
 
     // Se tiver visita selecionada, mostra o ecrã de detalhe
     val noteViewModel: NoteViewModel = viewModel(factory = noteFactory)
+    val attachmentViewModel: AttachmentViewModel = viewModel(factory = attachmentFactory)
     if (selectedVisit != null) {
         VisitDetailScreen(
             visit = selectedVisit!!,
             noteViewModel = noteViewModel,
+            attachmentViewModel = attachmentViewModel,
             onBack = { selectedVisitId = null }
         )
         return
@@ -347,6 +360,7 @@ fun MainScreen(
             override fun onAvailable(network: Network) {
                 visitViewModel.onNetworkRestored()
                 noteViewModel.onNetworkRestored()
+                attachmentViewModel.onNetworkRestored()
             }
         }
 

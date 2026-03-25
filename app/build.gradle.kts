@@ -68,6 +68,9 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
+    //Material Icons
+    implementation("androidx.compose.material:material-icons-extended")
+
     // Room Database
     val room_version = "2.8.4"
 
@@ -80,6 +83,12 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
 
+    // Firebase Storage
+    implementation("com.google.firebase:firebase-storage")
+
     //loc
     implementation("com.google.android.gms:play-services-location:21.2.0")
+
+    //coil
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }
