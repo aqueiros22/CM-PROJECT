@@ -8,6 +8,7 @@ import androidx.room.PrimaryKey
 data class Visit(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
+    val userId: String = "",
     val code: String = "",
     val name: String = "",
     val date: String = "",

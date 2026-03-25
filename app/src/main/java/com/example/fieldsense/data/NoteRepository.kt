@@ -43,8 +43,8 @@ class NoteRepository(
         }
     }
 
-    suspend fun syncPendingNotes() {
-        val pendingNotes = noteDao.getUnsyncedNotes()
+    suspend fun syncPendingNotes(userId: String) {
+        val pendingNotes = noteDao.getUnsyncedNotes(userId)
 
         pendingNotes.forEach { note ->
             try {

@@ -3,6 +3,7 @@ package com.example.fieldsense.data
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -12,21 +13,25 @@ import java.util.Date
 import java.util.Locale
 
 class NoteViewModel(private val repository: NoteRepository) : ViewModel() {
+    private val _userId = MutableStateFlow<String?>(null)
     private val notesCache = mutableMapOf<Int, StateFlow<List<Note>>>()
-    /*fun getNotesForVisit(visitId: Int): StateFlow<List<Note>> =
-        repository.getNotesForVisit(visitId)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-*/
+
+    fun setUserId(userId: String) {
+        _userId.value = userId
+    }
+
     fun getNotesForVisit(visitId: Int): StateFlow<List<Note>> {
         return notesCache.getOrPut(visitId) {
             repository.getNotesForVisit(visitId)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
         }
     }
+
     fun insertNote(visitId: Int, content: String) {
         viewModelScope.launch {
+            val uid = _userId.value ?: ""
             val date = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
-            repository.insertNote(Note(visitId = visitId, content = content, date = date))
+            repository.insertNote(Note(userId = uid, visitId = visitId, content = content, date = date))
         }
     }
 
@@ -36,13 +41,14 @@ class NoteViewModel(private val repository: NoteRepository) : ViewModel() {
 
     fun syncPendingNotes() {
         viewModelScope.launch {
-            repository.syncPendingNotes()
+            _userId.value?.let { uid ->
+                repository.syncPendingNotes(uid)
+            }
         }
     }
+
     fun onNetworkRestored() {
-        viewModelScope.launch {
-            repository.syncPendingNotes()
-        }
+        syncPendingNotes()
     }
 
     fun updateNote(note: Note) {

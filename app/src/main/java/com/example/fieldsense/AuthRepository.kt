@@ -10,6 +10,8 @@ class AuthRepository(private val auth: FirebaseAuth) {
 
     fun getCurrentUserEmail(): String = auth.currentUser?.email ?: "Unknown"
 
+    fun getCurrentUserId(): String = auth.currentUser?.uid ?: ""
+
     fun signOut() {
         auth.signOut()
     }
