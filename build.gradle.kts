@@ -5,3 +5,4 @@ plugins {
     id("com.google.gms.google-services") version "4.4.1" apply false
     id("com.google.devtools.ksp") version "2.3.4" apply false
 }
+

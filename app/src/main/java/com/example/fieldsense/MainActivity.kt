@@ -23,8 +23,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -55,7 +58,6 @@ import java.util.Date
 import java.util.Locale
 import android.Manifest
 import android.content.pm.PackageManager
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import com.example.fieldsense.data.AttachmentRepository
@@ -65,6 +67,12 @@ import com.example.fieldsense.data.FirebaseStorageService
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+
 
 
 class MainActivity : ComponentActivity() {
@@ -80,7 +88,7 @@ class MainActivity : ComponentActivity() {
         val database = AppDatabase.getDatabase(applicationContext)
         val firestoreService = FirestoreService()
 
-        val visitRepository = VisitRepository(database.visitDao(), firestoreService, applicationContext)
+        val visitRepository = VisitRepository(database.visitDao(), database.noteDao(), firestoreService, applicationContext)
         val visitFactory = VisitViewModelFactory(visitRepository)
 
         val noteRepository = NoteRepository(database.noteDao(), firestoreService)
@@ -96,16 +104,24 @@ class MainActivity : ComponentActivity() {
 
                     val authViewModel: AuthViewModel = viewModel(factory = authFactory)
                     val visitViewModel: VisitViewModel = viewModel(factory = visitFactory)
-
+                    val locationViewModel : LocationViewModel = viewModel()
                     val authState by authViewModel.authState.collectAsState()
+
+                    LaunchedEffect(authState) {
+                        if (authState is AuthState.Authenticated) {
+                            visitViewModel.setUserId(authRepository.getCurrentUserId())
+                        }
+                    }
 
                     when (authState) {
                         is AuthState.Authenticated -> {
-                            MainScreen(
+                            NavigationBar (
+                                userId = authRepository.getCurrentUserId(),
                                 email = authViewModel.getUserEmail(),
                                 visitViewModel = visitViewModel,
                                 attachmentFactory = attachmentFactory,
                                 onLogout = { authViewModel.signOut() },
+                                locationViewModel = locationViewModel,
                                 noteFactory = noteFactory
                             )
                         }
@@ -280,6 +296,7 @@ fun AuthenticationScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
+    userId: String,
     email: String,
     visitViewModel: VisitViewModel,
     noteFactory: NoteViewModelFactory,
@@ -339,9 +356,14 @@ fun MainScreen(
     // Se tiver visita selecionada, mostra o ecrã de detalhe
     val noteViewModel: NoteViewModel = viewModel(factory = noteFactory)
     val attachmentViewModel: AttachmentViewModel = viewModel(factory = attachmentFactory)
+    LaunchedEffect(userId) {
+        noteViewModel.setUserId(userId)
+    }
+
     if (selectedVisit != null) {
         VisitDetailScreen(
             visit = selectedVisit!!,
+            visitViewModel = visitViewModel,
             noteViewModel = noteViewModel,
             attachmentViewModel = attachmentViewModel,
             onBack = { selectedVisitId = null }
@@ -451,7 +473,7 @@ fun MainScreen(
                 onConfirm = { code, name, loc ->
                     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
                     val currentDate = sdf.format(Date())
-                    visitViewModel.insertVisit(code, name, currentDate, loc)
+                    visitViewModel.insertVisit(userId, code, name, currentDate, loc)
                     showAddDialog = false
                 }
             )
@@ -600,4 +622,107 @@ fun AddVisitDialog(
             }
         }
     )
+}
+
+
+
+enum class Destination(
+    val route: String,
+    val label: String,
+    val icon: ImageVector,
+    val contentDescription: String
+) {
+    MAIN("home", "", Icons.Default.Home, ""),
+    MAP("map", "", Icons.Default.LocationOn, ""),
+}
+
+@Composable
+fun AppNavHost(
+    navController: NavHostController,
+    startDestination: Destination,
+    userId: String,
+    email: String,
+    visitViewModel: VisitViewModel,
+    locationViewModel: LocationViewModel,
+    onLogout: () -> Unit,
+    noteFactory: NoteViewModelFactory,
+    attachmentFactory: AttachmentViewModelFactory
+) {
+    NavHost(
+        navController,
+        startDestination = startDestination.route
+    ) {
+        Destination.entries.forEach { destination ->
+            composable(destination.route) {
+                when (destination) {
+                    Destination.MAIN -> MainScreen(
+                        userId = userId,
+                        email = email,
+                        visitViewModel = visitViewModel,
+                        onLogout = onLogout,
+                        noteFactory =  noteFactory,
+                        attachmentFactory = attachmentFactory)
+                    Destination.MAP -> MapScreen(Modifier, locationViewModel, onNavigateToOfflineMap = {navController.navigate("offline_map")})
+                }
+            }
+        }
+        composable("offline_map") { OfflineMapScreen() }
+    }
+}
+
+@Composable
+fun NavigationBar(
+        modifier: Modifier = Modifier,
+        userId: String,
+        email: String,
+        visitViewModel: VisitViewModel,
+        locationViewModel: LocationViewModel,
+        onLogout: () -> Unit,
+        noteFactory: NoteViewModelFactory,
+        attachmentFactory: AttachmentViewModelFactory
+        ) {
+    val navController = rememberNavController()
+    val startDestination = Destination.MAIN
+    var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }
+
+    Scaffold(
+        modifier = modifier,
+        bottomBar = {
+            NavigationBar(windowInsets = NavigationBarDefaults.windowInsets) {
+                Destination.entries.forEachIndexed { index, destination ->
+                    NavigationBarItem(
+                        selected = selectedDestination == index,
+                        onClick = {
+                            navController.navigate(route = destination.route)
+                            selectedDestination = index
+                        },
+                        icon = {
+                            Icon(
+                                destination.icon,
+                                contentDescription = destination.contentDescription
+                            )
+                        }
+
+                    )
+                }
+            }
+        }
+    ) { contentPadding ->
+        Box(
+            modifier = Modifier.padding(contentPadding)
+        ) {
+            AppNavHost(
+                navController,
+                startDestination,
+                userId,
+                email,
+                visitViewModel,
+                locationViewModel,
+                onLogout,
+                noteFactory,
+                attachmentFactory
+            )
+        }
+
+    }
 }
