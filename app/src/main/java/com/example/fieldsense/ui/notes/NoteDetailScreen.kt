@@ -1,4 +1,4 @@
-package com.example.fieldsense
+package com.example.fieldsense.ui.notes
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -10,8 +10,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.fieldsense.data.Note
-import com.example.fieldsense.data.NoteViewModel
+import com.example.fieldsense.data.model.Note
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

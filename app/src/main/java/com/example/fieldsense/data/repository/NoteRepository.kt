@@ -1,6 +1,9 @@
-package com.example.fieldsense.data
+package com.example.fieldsense.data.repository
 
 import android.util.Log
+import com.example.fieldsense.data.local.NoteDao
+import com.example.fieldsense.data.model.Note
+import com.example.fieldsense.data.remote.FirestoreService
 import kotlinx.coroutines.flow.Flow
 
 class NoteRepository(

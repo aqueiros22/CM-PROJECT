@@ -1,8 +1,10 @@
-package com.example.fieldsense.data
+package com.example.fieldsense.ui.notes
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.fieldsense.data.model.Note
+import com.example.fieldsense.data.repository.NoteRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,7 +33,14 @@ class NoteViewModel(private val repository: NoteRepository) : ViewModel() {
         viewModelScope.launch {
             val uid = _userId.value ?: ""
             val date = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
-            repository.insertNote(Note(userId = uid, visitId = visitId, content = content, date = date))
+            repository.insertNote(
+                Note(
+                    userId = uid,
+                    visitId = visitId,
+                    content = content,
+                    date = date
+                )
+            )
         }
     }
 

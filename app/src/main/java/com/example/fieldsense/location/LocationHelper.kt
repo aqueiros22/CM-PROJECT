@@ -1,19 +1,19 @@
-package com.example.fieldsense;
+package com.example.fieldsense.location
 
 import android.Manifest
-import android.annotation.SuppressLint;
-import android.content.Context;
+import android.annotation.SuppressLint
+import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Looper;
+import android.os.Looper
 import androidx.core.content.ContextCompat
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.Priority;
-import org.maplibre.android.geometry.LatLng;
-
+import com.example.fieldsense.ui.map.LocationViewModel
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import org.maplibre.android.geometry.LatLng
 
 class LocationHelper(context: Context) {
 
@@ -51,5 +51,3 @@ class LocationHelper(context: Context) {
 
     }
 }
-
-

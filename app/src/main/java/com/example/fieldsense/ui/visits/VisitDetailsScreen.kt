@@ -1,4 +1,4 @@
-package com.example.fieldsense
+package com.example.fieldsense.ui.visits
 
 import android.app.Activity
 import android.content.Intent
@@ -23,7 +23,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -33,11 +32,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.fieldsense.data.Note
-import com.example.fieldsense.data.Visit
-import com.example.fieldsense.data.NoteViewModel
-import com.example.fieldsense.data.VisitViewModel
-import java.util.Locale
+import com.example.fieldsense.data.model.Note
+import com.example.fieldsense.data.model.Visit
+import com.example.fieldsense.ui.notes.NoteViewModel
+import com.example.fieldsense.ui.notes.NoteDetailScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

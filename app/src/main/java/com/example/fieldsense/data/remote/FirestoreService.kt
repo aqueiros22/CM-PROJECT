@@ -1,5 +1,7 @@
-package com.example.fieldsense.data
+package com.example.fieldsense.data.remote
 
+import com.example.fieldsense.data.model.Note
+import com.example.fieldsense.data.model.Visit
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore

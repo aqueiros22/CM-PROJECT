@@ -1,8 +1,10 @@
-package com.example.fieldsense.data
+package com.example.fieldsense.ui.visits
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.fieldsense.data.model.Visit
+import com.example.fieldsense.data.repository.VisitRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -34,7 +36,8 @@ class VisitViewModel(private val repository: VisitRepository) : ViewModel() {
 
     fun insertVisit(userId: String, code: String, name: String, date: String, location: String) {
         viewModelScope.launch {
-            val visit = Visit(userId = userId, code = code, name = name, date = date, location = location)
+            val visit =
+                Visit(userId = userId, code = code, name = name, date = date, location = location)
             repository.insert(visit)
         }
     }

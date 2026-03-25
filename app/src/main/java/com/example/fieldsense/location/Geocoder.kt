@@ -1,4 +1,4 @@
-package com.example.fieldsense
+package com.example.fieldsense.location
 
 import android.content.Context
 import android.location.Geocoder

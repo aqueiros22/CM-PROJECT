@@ -1,4 +1,4 @@
-package com.example.fieldsense
+package com.example.fieldsense.data.repository
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider

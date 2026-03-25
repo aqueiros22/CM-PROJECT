@@ -1,4 +1,4 @@
-package com.example.fieldsense
+package com.example.fieldsense.ui.map
 
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -37,6 +37,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
+import com.example.fieldsense.BuildConfig
+import com.example.fieldsense.MainActivity
+import com.example.fieldsense.location.LocationHelper
 import kotlinx.serialization.json.JsonObject
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
@@ -51,6 +54,8 @@ import org.maplibre.spatialk.geojson.FeatureCollection
 import org.maplibre.spatialk.geojson.Point
 import org.maplibre.spatialk.geojson.Position
 import kotlinx.coroutines.launch
+import kotlin.collections.get
+
 @Composable
 fun MapScreen(modifier: Modifier = Modifier, viewModel: LocationViewModel, onNavigateToOfflineMap: () -> Unit) {
 

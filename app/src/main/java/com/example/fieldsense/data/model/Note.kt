@@ -1,8 +1,9 @@
-package com.example.fieldsense.data
+package com.example.fieldsense.data.model
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
+import com.example.fieldsense.data.model.Visit
 
 @Entity(
     tableName = "notes",
@@ -11,7 +12,7 @@ import androidx.room.PrimaryKey
             entity = Visit::class,
             parentColumns = ["id"],
             childColumns = ["visitId"],
-            onDelete = ForeignKey.CASCADE
+            onDelete = ForeignKey.Companion.CASCADE
         )
     ]
 )

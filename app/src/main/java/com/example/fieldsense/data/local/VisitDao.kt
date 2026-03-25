@@ -1,10 +1,11 @@
-package com.example.fieldsense.data
+package com.example.fieldsense.data.local
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import com.example.fieldsense.data.model.Visit
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -16,7 +17,7 @@ interface VisitDao {
     @Query("SELECT * FROM visits ORDER BY id DESC")
     fun getAllVisits(): Flow<List<Visit>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insertVisit(visit: Visit): Long
 
     @Query("DELETE FROM visits WHERE id = :visitId")

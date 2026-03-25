@@ -1,7 +1,8 @@
-package com.example.fieldsense
+package com.example.fieldsense.data.remote
 
 
 import android.util.Log
+import com.example.fieldsense.BuildConfig
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*

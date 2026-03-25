@@ -1,9 +1,13 @@
-package com.example.fieldsense.data
+package com.example.fieldsense.data.local
 
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.example.fieldsense.data.model.Note
+import com.example.fieldsense.data.local.NoteDao
+import com.example.fieldsense.data.model.Visit
+import com.example.fieldsense.data.local.VisitDao
 
 @Database(entities = [Visit::class, Note::class], version = 5, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {

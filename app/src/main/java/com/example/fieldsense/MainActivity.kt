@@ -44,15 +44,15 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.fieldsense.data.AppDatabase
-import com.example.fieldsense.data.FirestoreService
-import com.example.fieldsense.data.Visit
-import com.example.fieldsense.data.VisitRepository
-import com.example.fieldsense.data.VisitViewModel
-import com.example.fieldsense.data.VisitViewModelFactory
-import com.example.fieldsense.data.NoteRepository
-import com.example.fieldsense.data.NoteViewModel
-import com.example.fieldsense.data.NoteViewModelFactory
+import com.example.fieldsense.data.local.AppDatabase
+import com.example.fieldsense.data.remote.FirestoreService
+import com.example.fieldsense.data.model.Visit
+import com.example.fieldsense.data.repository.VisitRepository
+import com.example.fieldsense.ui.visits.VisitViewModel
+import com.example.fieldsense.ui.visits.VisitViewModelFactory
+import com.example.fieldsense.data.repository.NoteRepository
+import com.example.fieldsense.ui.notes.NoteViewModel
+import com.example.fieldsense.ui.notes.NoteViewModelFactory
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -68,7 +68,15 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-
+import com.example.fieldsense.data.repository.AuthRepository
+import com.example.fieldsense.ui.map.LocationViewModel
+import com.example.fieldsense.ui.map.MapScreen
+import com.example.fieldsense.ui.map.OfflineMapScreen
+import com.example.fieldsense.ui.visits.VisitDetailScreen
+import com.example.fieldsense.location.getAddressFromLocation
+import com.example.fieldsense.ui.auth.AuthState
+import com.example.fieldsense.ui.auth.AuthViewModel
+import com.example.fieldsense.ui.auth.AuthViewModelFactory
 
 
 class MainActivity : ComponentActivity() {
@@ -646,7 +654,10 @@ fun AppNavHost(
                         visitViewModel = visitViewModel,
                         onLogout = onLogout,
                         noteFactory =  noteFactory)
-                    Destination.MAP -> MapScreen(Modifier, locationViewModel, onNavigateToOfflineMap = {navController.navigate("offline_map")})
+                    Destination.MAP -> MapScreen(
+                        Modifier,
+                        locationViewModel,
+                        onNavigateToOfflineMap = { navController.navigate("offline_map") })
                 }
             }
         }
@@ -656,13 +667,13 @@ fun AppNavHost(
 
 @Composable
 fun NavigationBar(
-        modifier: Modifier = Modifier,
-        userId: String,
-        email: String,
-        visitViewModel: VisitViewModel,
-        locationViewModel: LocationViewModel,
-        onLogout: () -> Unit,
-        noteFactory: NoteViewModelFactory) {
+    modifier: Modifier = Modifier,
+    userId: String,
+    email: String,
+    visitViewModel: VisitViewModel,
+    locationViewModel: LocationViewModel,
+    onLogout: () -> Unit,
+    noteFactory: NoteViewModelFactory) {
     val navController = rememberNavController()
     val startDestination = Destination.MAIN
     var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }

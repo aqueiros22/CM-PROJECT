@@ -1,6 +1,12 @@
-package com.example.fieldsense.data
+package com.example.fieldsense.data.local
 
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
+import com.example.fieldsense.data.model.Note
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -12,7 +18,7 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE visitId = :visitId")
     suspend fun getNotesForVisitSync(visitId: Int): List<Note>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insertNote(note: Note): Long
 
     @Delete

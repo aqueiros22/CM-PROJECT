@@ -1,10 +1,14 @@
-package com.example.fieldsense.data
+package com.example.fieldsense.data.repository
 
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.util.Log
-import com.example.fieldsense.getAddressFromLocation
+import com.example.fieldsense.data.local.NoteDao
+import com.example.fieldsense.data.local.VisitDao
+import com.example.fieldsense.data.model.Visit
+import com.example.fieldsense.data.remote.FirestoreService
+import com.example.fieldsense.location.getAddressFromLocation
 import kotlinx.coroutines.flow.Flow
 
 class VisitRepository(
