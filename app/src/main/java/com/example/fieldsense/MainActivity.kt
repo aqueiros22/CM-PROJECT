@@ -635,10 +635,11 @@ fun AppNavHost(
                         visitViewModel = visitViewModel,
                         onLogout = onLogout,
                         noteFactory =  noteFactory)
-                    Destination.MAP -> MapScreen(Modifier, locationViewModel)
+                    Destination.MAP -> MapScreen(Modifier, locationViewModel, onNavigateToOfflineMap = {navController.navigate("offline_map")})
                 }
             }
         }
+        composable("offline_map") { OfflineMapScreen() }
     }
 }
 

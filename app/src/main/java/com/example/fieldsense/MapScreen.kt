@@ -52,11 +52,11 @@ import org.maplibre.spatialk.geojson.Point
 import org.maplibre.spatialk.geojson.Position
 import kotlinx.coroutines.launch
 @Composable
-fun MapScreen(modifier: Modifier = Modifier, viewModel: LocationViewModel) {
+fun MapScreen(modifier: Modifier = Modifier, viewModel: LocationViewModel, onNavigateToOfflineMap: () -> Unit) {
 
     val context = LocalContext.current
     val myLocationHelper = LocationHelper(context)
-    DisplayLocation(modifier = modifier, myLocationHelper = myLocationHelper, viewModel, context = context)
+    DisplayLocation(modifier = modifier, myLocationHelper = myLocationHelper, viewModel, context = context, onNavigateToOfflineMap = onNavigateToOfflineMap)
 }
 
 
@@ -66,7 +66,8 @@ fun DisplayLocation(
     modifier: Modifier,
     myLocationHelper: LocationHelper,
     viewModel: LocationViewModel,
-    context: Context
+    context: Context,
+    onNavigateToOfflineMap: () -> Unit
 ) {
     val location = viewModel.location.value
     val cameraState = rememberCameraState(
@@ -200,6 +201,9 @@ fun DisplayLocation(
 
         }) {
             Text("Get Location")
+        }
+        Button( onClick = onNavigateToOfflineMap) {
+            Text(text = "Offline Maps")
         }
 
 
