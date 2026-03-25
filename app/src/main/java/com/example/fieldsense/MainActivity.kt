@@ -53,6 +53,8 @@ import com.example.fieldsense.ui.visits.VisitViewModelFactory
 import com.example.fieldsense.data.repository.NoteRepository
 import com.example.fieldsense.ui.notes.NoteViewModel
 import com.example.fieldsense.ui.notes.NoteViewModelFactory
+import com.example.fieldsense.ui.attachments.AttachmentViewModel
+import com.example.fieldsense.ui.attachments.AttachmentViewModelFactory
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -68,6 +70,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.fieldsense.data.remote.FirebaseStorageService
+import com.example.fieldsense.data.repository.AttachmentRepository
 import com.example.fieldsense.data.repository.AuthRepository
 import com.example.fieldsense.ui.map.LocationViewModel
 import com.example.fieldsense.ui.map.MapScreen
@@ -77,6 +81,7 @@ import com.example.fieldsense.location.getAddressFromLocation
 import com.example.fieldsense.ui.auth.AuthState
 import com.example.fieldsense.ui.auth.AuthViewModel
 import com.example.fieldsense.ui.auth.AuthViewModelFactory
+
 
 
 class MainActivity : ComponentActivity() {
@@ -91,11 +96,17 @@ class MainActivity : ComponentActivity() {
 
         val database = AppDatabase.getDatabase(applicationContext)
         val firestoreService = FirestoreService()
+
         val visitRepository = VisitRepository(database.visitDao(), database.noteDao(), firestoreService, applicationContext)
         val visitFactory = VisitViewModelFactory(visitRepository)
 
         val noteRepository = NoteRepository(database.noteDao(), firestoreService)
         val noteFactory = NoteViewModelFactory(noteRepository)
+
+        val storageService = FirebaseStorageService()
+        val attachmentRepository =
+            AttachmentRepository(database.attachmentDao(), firestoreService, storageService)
+        val attachmentFactory = AttachmentViewModelFactory(attachmentRepository)
 
         setContent {
             FieldSenseTheme {
@@ -118,6 +129,7 @@ class MainActivity : ComponentActivity() {
                                 userId = authRepository.getCurrentUserId(),
                                 email = authViewModel.getUserEmail(),
                                 visitViewModel = visitViewModel,
+                                attachmentFactory = attachmentFactory,
                                 onLogout = { authViewModel.signOut() },
                                 locationViewModel = locationViewModel,
                                 noteFactory = noteFactory
@@ -298,6 +310,7 @@ fun MainScreen(
     email: String,
     visitViewModel: VisitViewModel,
     noteFactory: NoteViewModelFactory,
+    attachmentFactory: AttachmentViewModelFactory,
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
@@ -352,6 +365,7 @@ fun MainScreen(
 
     // Se tiver visita selecionada, mostra o ecrã de detalhe
     val noteViewModel: NoteViewModel = viewModel(factory = noteFactory)
+    val attachmentViewModel: AttachmentViewModel = viewModel(factory = attachmentFactory)
     LaunchedEffect(userId) {
         noteViewModel.setUserId(userId)
     }
@@ -361,6 +375,7 @@ fun MainScreen(
             visit = selectedVisit!!,
             visitViewModel = visitViewModel,
             noteViewModel = noteViewModel,
+            attachmentViewModel = attachmentViewModel,
             onBack = { selectedVisitId = null }
         )
         return
@@ -377,6 +392,7 @@ fun MainScreen(
             override fun onAvailable(network: Network) {
                 visitViewModel.onNetworkRestored()
                 noteViewModel.onNetworkRestored()
+                attachmentViewModel.onNetworkRestored()
             }
         }
 
@@ -601,10 +617,10 @@ fun AddVisitDialog(
             Button(
                 onClick = { onConfirm(code, name, location) },
                 enabled = code.isNotBlank() &&
-                          name.isNotBlank() &&
-                          location.isNotBlank() &&
-                          location != "Fetching location..." &&
-                          location != "Finding address...",
+                        name.isNotBlank() &&
+                        location.isNotBlank() &&
+                        location != "Fetching location..." &&
+                        location != "Finding address...",
                 shape = MaterialTheme.shapes.small
             ) {
                 Text("Save Visit")
@@ -639,7 +655,8 @@ fun AppNavHost(
     visitViewModel: VisitViewModel,
     locationViewModel: LocationViewModel,
     onLogout: () -> Unit,
-    noteFactory: NoteViewModelFactory
+    noteFactory: NoteViewModelFactory,
+    attachmentFactory: AttachmentViewModelFactory
 ) {
     NavHost(
         navController,
@@ -653,11 +670,9 @@ fun AppNavHost(
                         email = email,
                         visitViewModel = visitViewModel,
                         onLogout = onLogout,
-                        noteFactory =  noteFactory)
-                    Destination.MAP -> MapScreen(
-                        Modifier,
-                        locationViewModel,
-                        onNavigateToOfflineMap = { navController.navigate("offline_map") })
+                        noteFactory =  noteFactory,
+                        attachmentFactory = attachmentFactory)
+                    Destination.MAP -> MapScreen(Modifier, locationViewModel, onNavigateToOfflineMap = {navController.navigate("offline_map")})
                 }
             }
         }
@@ -673,7 +688,9 @@ fun NavigationBar(
     visitViewModel: VisitViewModel,
     locationViewModel: LocationViewModel,
     onLogout: () -> Unit,
-    noteFactory: NoteViewModelFactory) {
+    noteFactory: NoteViewModelFactory,
+    attachmentFactory: AttachmentViewModelFactory
+) {
     val navController = rememberNavController()
     val startDestination = Destination.MAIN
     var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }
@@ -712,7 +729,9 @@ fun NavigationBar(
                 visitViewModel,
                 locationViewModel,
                 onLogout,
-                noteFactory)
+                noteFactory,
+                attachmentFactory
+            )
         }
 
     }

@@ -5,15 +5,16 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.example.fieldsense.data.model.Note
-import com.example.fieldsense.data.local.NoteDao
 import com.example.fieldsense.data.model.Visit
-import com.example.fieldsense.data.local.VisitDao
+import com.example.fieldsense.data.model.Attachment
+import com.example.fieldsense.data.local.AttachmentDao
 
-@Database(entities = [Visit::class, Note::class], version = 5, exportSchema = false)
+@Database(entities = [Visit::class, Note::class, Attachment::class], version = 6, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun visitDao(): VisitDao
     abstract fun noteDao(): NoteDao
+    abstract fun attachmentDao(): AttachmentDao
 
     companion object {
         @Volatile

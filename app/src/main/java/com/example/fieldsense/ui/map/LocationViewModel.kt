@@ -1,7 +1,6 @@
 package com.example.fieldsense.ui.map
 
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fieldsense.data.remote.MapTilerFeature
@@ -14,13 +13,14 @@ class LocationViewModel: ViewModel() {
 
     private val geocodingService = MapTilerGeocodingService()
     val location: State<LatLng?> = _location
+    
     var isSearching by mutableStateOf(false)
         private set
 
     var searchResults by mutableStateOf<List<MapTilerFeature>>(emptyList())
         private set
 
-    fun updateLocation( newLocation: LatLng){
+    fun updateLocation(newLocation: LatLng) {
         _location.value = newLocation
     }
 
@@ -30,11 +30,9 @@ class LocationViewModel: ViewModel() {
             searchResults = geocodingService.search(query)
             isSearching = false
         }
-
     }
 
     fun clearResults() {
         searchResults = emptyList()
     }
-
 }

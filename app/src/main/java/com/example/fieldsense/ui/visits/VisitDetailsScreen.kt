@@ -36,6 +36,15 @@ import com.example.fieldsense.data.model.Note
 import com.example.fieldsense.data.model.Visit
 import com.example.fieldsense.ui.notes.NoteViewModel
 import com.example.fieldsense.ui.notes.NoteDetailScreen
+import com.example.fieldsense.ui.visits.VisitViewModel
+import com.example.fieldsense.data.model.Attachment
+import com.example.fieldsense.ui.attachments.AttachmentDetailScreen
+import com.example.fieldsense.ui.attachments.AttachmentViewModel
+import android.net.Uri
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.AttachFile
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,17 +52,45 @@ fun VisitDetailScreen(
     visit: Visit,
     visitViewModel: VisitViewModel,
     noteViewModel: NoteViewModel,
+    attachmentViewModel: AttachmentViewModel,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val notes by noteViewModel.getNotesForVisit(visit.id).collectAsState()
+    val attachments by attachmentViewModel.getAttachmentsForVisit(visit.id).collectAsState()
+
     var showAddNoteDialog by rememberSaveable { mutableStateOf(false) }
     var showEditVisitDialog by rememberSaveable { mutableStateOf(false) }
     var selectedNoteId by rememberSaveable { mutableStateOf<Int?>(null) }
     val selectedNote = notes.find { it.id == selectedNoteId }
 
+
+    var selectedAttachmentId by rememberSaveable { mutableStateOf<Int?>(null) }
+    val selectedAttachment = attachments.find { it.id == selectedAttachmentId }
+
+    // Launcher para escolher imagem da galeria
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            val fileName = "img_${System.currentTimeMillis()}.jpg"
+            attachmentViewModel.insertAttachment(visit.id, fileName, it, "image")
+        }
+    }
+
+    // Launcher para escolher qualquer ficheiro
+    val filePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            val fileName = "file_${System.currentTimeMillis()}"
+            attachmentViewModel.insertAttachment(visit.id, fileName, it, "file")
+        }
+    }
+
     LaunchedEffect(Unit) {
         noteViewModel.syncPendingNotes()
+        attachmentViewModel.syncPendingAttachments()
     }
 
     if (selectedNote != null) {
@@ -65,16 +102,20 @@ fun VisitDetailScreen(
         return
     }
 
+    if (selectedAttachment != null) {
+        AttachmentDetailScreen(
+            attachment = selectedAttachment,
+            onBack = { selectedAttachmentId = null }
+        )
+        return
+    }
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(visit.name, fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
@@ -109,52 +150,94 @@ fun VisitDetailScreen(
             }
         }
     ) { innerPadding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(vertical = 24.dp)
         ) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium,
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Detalhes",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary
+            // Card de detalhes da visita
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
                     )
-                    Text("Data: ${visit.date}", style = MaterialTheme.typography.bodyLarge)
-                    Text("Local: ${visit.location}", style = MaterialTheme.typography.bodyLarge)
-                    Text("Código: ${visit.code}", style = MaterialTheme.typography.bodyLarge)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("Detalhes", style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary)
+                        Text(visit.date, style = MaterialTheme.typography.bodyLarge)
+                        Text(visit.location, style = MaterialTheme.typography.bodyLarge)
+                        Text(visit.code, style = MaterialTheme.typography.bodyLarge)
+                    }
                 }
             }
 
-            // Lista de anotações
-            Text("Anotações", style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary)
+            // Secção de anexos
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Anexos", style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary)
+                    Row {
+                        // Botão para adicionar imagem
+                        IconButton(onClick = { imagePickerLauncher.launch("image/*") }) {
+                            Icon(Icons.Filled.Image, contentDescription = "Adicionar Imagem",
+                                tint = MaterialTheme.colorScheme.primary)
+                        }
+                        // Botão para adicionar ficheiro
+                        IconButton(onClick = { filePicker.launch("*/*") }) {
+                            Icon(Icons.Filled.AttachFile, contentDescription = "Adicionar Ficheiro",
+                                tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
+
+            if (attachments.isEmpty()) {
+                item {
+                    Text("Nenhum anexo ainda.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else {
+                items(attachments) { attachment ->
+                    AttachmentCard(
+                        attachment = attachment,
+                        onClick = { selectedAttachmentId = attachment.id },
+                        onDelete = { attachmentViewModel.deleteAttachment(attachment) }
+                    )
+                }
+            }
+
+            // Secção de anotações
+            item {
+                Text("Anotações", style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary)
+            }
 
             if (notes.isEmpty()) {
-                Text("Nenhuma anotação ainda.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                item {
+                    Text("Nenhuma anotação ainda.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(notes) { note ->
-                        NoteCard(
-                            note = note,
-                            onDelete = { noteViewModel.deleteNote(note) },
-                            onClick = { selectedNoteId = note.id }
-                        )
-                    }
+                items(notes) { note ->
+                    NoteCard(
+                        note = note,
+                        onDelete = { noteViewModel.deleteNote(note) },
+                        onClick = { selectedNoteId = note.id }
+                    )
                 }
             }
         }
@@ -182,6 +265,55 @@ fun VisitDetailScreen(
     }
 }
 
+@Composable
+fun AttachmentCard(attachment: Attachment, onDelete: () -> Unit, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = if (attachment.type == "image") Icons.Filled.Image else Icons.Filled.AttachFile,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = attachment.fileName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = attachment.date,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                imageVector = if (attachment.isSynced) Icons.Filled.Check else Icons.Filled.Build,
+                contentDescription = if (attachment.isSynced) "Synced" else "Pending",
+                modifier = Modifier.size(16.dp),
+                tint = if (attachment.isSynced) Color(0xFF4CAF50) else Color.Gray
+            )
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Filled.Delete, contentDescription = "Apagar",
+                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f))
+            }
+        }
+    }
+}
+
+// Composables existentes sem alterações
 @Composable
 fun EditVisitDialog(
     visit: Visit,
@@ -261,12 +393,8 @@ fun NoteCard(note: Note, onDelete: () -> Unit, onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.padding(8.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    note.content,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Text(note.content, style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(note.date, style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

@@ -2,6 +2,7 @@ package com.example.fieldsense.data.remote
 
 import com.example.fieldsense.data.model.Note
 import com.example.fieldsense.data.model.Visit
+import com.example.fieldsense.data.model.Attachment
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
@@ -32,5 +33,21 @@ class FirestoreService {
 
     suspend fun deleteNote(note: Note) {
         getNotesCollection(note.visitId)?.document(note.id.toString())?.delete()?.await()
+    }
+    private fun getAttachmentsCollection(visitId: Int) =
+        getUserVisitsCollection()?.document(visitId.toString())?.collection("attachments")
+
+    suspend fun uploadAttachment(attachment: Attachment) {
+        getAttachmentsCollection(attachment.visitId)
+            ?.document(attachment.id.toString())
+            ?.set(attachment)
+            ?.await()
+    }
+
+    suspend fun deleteAttachment(attachment: Attachment) {
+        getAttachmentsCollection(attachment.visitId)
+            ?.document(attachment.id.toString())
+            ?.delete()
+            ?.await()
     }
 }
