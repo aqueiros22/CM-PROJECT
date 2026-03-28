@@ -1,5 +1,6 @@
 import java.util.Properties
 
+
 val localProperties = Properties()
 localProperties.load(rootProject.file("local.properties").inputStream())
 
@@ -24,6 +25,10 @@ android {
     }
 
     defaultConfig {
+        val properties = com.android.build.gradle.internal.cxx.configure.gradleLocalProperties(rootDir, providers)
+        buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"${properties["CLOUDINARY_CLOUD_NAME"]}\"")
+        buildConfigField("String", "CLOUDINARY_API_KEY", "\"${properties["CLOUDINARY_API_KEY"]}\"")
+        buildConfigField("String", "CLOUDINARY_API_SECRET", "\"${properties["CLOUDINARY_API_SECRET"]}\"")
         applicationId = "com.example.fieldsense"
         minSdk = 24
         targetSdk = 36
@@ -108,8 +113,8 @@ dependencies {
     // Maplibre
     implementation(libs.maplibre.compose)
 
-    // Firebase Storage
-    implementation("com.google.firebase:firebase-storage")
+    // Cloudinary
+    implementation("com.cloudinary:cloudinary-android:2.3.1")
 
     //loc
     implementation("com.google.android.gms:play-services-location:21.2.0")

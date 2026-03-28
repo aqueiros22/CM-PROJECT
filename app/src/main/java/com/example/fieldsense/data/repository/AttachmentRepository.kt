@@ -4,7 +4,7 @@ import android.net.Uri
 import android.util.Log
 import com.example.fieldsense.data.model.Attachment
 import com.example.fieldsense.data.local.AttachmentDao
-import com.example.fieldsense.data.remote.FirebaseStorageService
+import com.example.fieldsense.data.remote.CloudinaryService
 import com.example.fieldsense.data.remote.FirestoreService
 import kotlinx.coroutines.flow.Flow
 import java.text.SimpleDateFormat
@@ -14,7 +14,7 @@ import java.util.Locale
 class AttachmentRepository(
     private val attachmentDao: AttachmentDao,
     private val firestoreService: FirestoreService,
-    private val storageService: FirebaseStorageService
+    private val cloudinaryService: CloudinaryService
 ) {
 
     fun getAttachmentsForVisit(visitId: Int): Flow<List<Attachment>> =
@@ -37,7 +37,7 @@ class AttachmentRepository(
 
         // 2. Tenta sincronizar com Firebase
         try {
-            val remoteUrl = storageService.uploadFile(visitId, fileName, fileUri)
+            val remoteUrl = cloudinaryService.uploadFile(visitId, fileName, fileUri)
             val syncedAttachment = savedAttachment.copy(remoteUrl = remoteUrl, isSynced = true)
             firestoreService.uploadAttachment(syncedAttachment)
             attachmentDao.updateAttachment(syncedAttachment)
@@ -49,7 +49,7 @@ class AttachmentRepository(
     suspend fun deleteAttachment(attachment: Attachment) {
         attachmentDao.deleteAttachment(attachment)
         try {
-            storageService.deleteFile(attachment.visitId, attachment.fileName)
+            cloudinaryService.deleteFile(attachment.fileName)
             firestoreService.deleteAttachment(attachment)
         } catch (e: Exception) {
             Log.e("AttachmentRepository", "Cloud delete failed", e)
@@ -61,7 +61,7 @@ class AttachmentRepository(
 
         pending.forEach { attachment ->
             try {
-                val remoteUrl = storageService.uploadFile(
+                val remoteUrl = cloudinaryService.uploadFile(  // <- mudou
                     attachment.visitId,
                     attachment.fileName,
                     Uri.parse(attachment.localPath)

@@ -70,7 +70,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.fieldsense.data.remote.FirebaseStorageService
+import com.cloudinary.android.MediaManager
+import com.example.fieldsense.data.remote.CloudinaryService
 import com.example.fieldsense.data.repository.AttachmentRepository
 import com.example.fieldsense.data.repository.AuthRepository
 import com.example.fieldsense.ui.map.LocationViewModel
@@ -90,6 +91,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        val cloudinaryConfig = mapOf(
+            "cloud_name" to BuildConfig.CLOUDINARY_CLOUD_NAME,
+            "api_key" to BuildConfig.CLOUDINARY_API_KEY,
+            "api_secret" to BuildConfig.CLOUDINARY_API_SECRET
+        )
+        MediaManager.init(this, cloudinaryConfig)
 
         val authRepository = AuthRepository(Firebase.auth)
         val authFactory = AuthViewModelFactory(authRepository)
@@ -103,9 +110,9 @@ class MainActivity : ComponentActivity() {
         val noteRepository = NoteRepository(database.noteDao(), firestoreService)
         val noteFactory = NoteViewModelFactory(noteRepository)
 
-        val storageService = FirebaseStorageService()
+        val cloudinaryService = CloudinaryService(applicationContext)
         val attachmentRepository =
-            AttachmentRepository(database.attachmentDao(), firestoreService, storageService)
+            AttachmentRepository(database.attachmentDao(), firestoreService, cloudinaryService)
         val attachmentFactory = AttachmentViewModelFactory(attachmentRepository)
 
         setContent {

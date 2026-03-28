@@ -41,6 +41,7 @@ import com.example.fieldsense.data.model.Attachment
 import com.example.fieldsense.ui.attachments.AttachmentDetailScreen
 import com.example.fieldsense.ui.attachments.AttachmentViewModel
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.AttachFile
 
@@ -83,7 +84,15 @@ fun VisitDetailScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            val fileName = "file_${System.currentTimeMillis()}"
+            // Obtém o nome real do ficheiro com extensão
+            val fileName = context.contentResolver.query(
+                it, null, null, null, null
+            )?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                cursor.moveToFirst()
+                cursor.getString(nameIndex)
+            } ?: "file_${System.currentTimeMillis()}"
+
             attachmentViewModel.insertAttachment(visit.id, fileName, it, "file")
         }
     }
