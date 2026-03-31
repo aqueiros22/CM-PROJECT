@@ -2,50 +2,40 @@ package com.example.fieldsense.ui.visits
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.QrCode
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.fieldsense.data.model.Attachment
 import com.example.fieldsense.data.model.Note
 import com.example.fieldsense.data.model.Visit
-import com.example.fieldsense.ui.notes.NoteViewModel
-import com.example.fieldsense.ui.notes.NoteDetailScreen
-import com.example.fieldsense.ui.visits.VisitViewModel
-import com.example.fieldsense.data.model.Attachment
 import com.example.fieldsense.ui.attachments.AttachmentDetailScreen
 import com.example.fieldsense.ui.attachments.AttachmentViewModel
-import android.net.Uri
-import android.provider.OpenableColumns
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.AttachFile
-
-
+import com.example.fieldsense.ui.notes.NoteDetailScreen
+import com.example.fieldsense.ui.notes.NoteViewModel
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,11 +55,11 @@ fun VisitDetailScreen(
     var selectedNoteId by rememberSaveable { mutableStateOf<Int?>(null) }
     val selectedNote = notes.find { it.id == selectedNoteId }
 
-
     var selectedAttachmentId by rememberSaveable { mutableStateOf<Int?>(null) }
     val selectedAttachment = attachments.find { it.id == selectedAttachmentId }
 
-    // Launcher para escolher imagem da galeria
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -79,12 +69,10 @@ fun VisitDetailScreen(
         }
     }
 
-    // Launcher para escolher qualquer ficheiro
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            // Obtém o nome real do ficheiro com extensão
             val fileName = context.contentResolver.query(
                 it, null, null, null, null
             )?.use { cursor ->
@@ -118,10 +106,25 @@ fun VisitDetailScreen(
         )
         return
     }
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = { Text(visit.name, fontWeight = FontWeight.SemiBold) },
+            LargeTopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            visit.name,
+                            fontWeight = FontWeight.ExtraBold,
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                        Text(
+                            "Visit Details & Notes",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -130,85 +133,96 @@ fun VisitDetailScreen(
                 actions = {
                     IconButton(onClick = {
                         val notesText = notes.joinToString("\n\n") { "${it.date}:\n${it.content}" }
-                        val shareContent = "Visita: ${visit.name}\nLocal: ${visit.location}\nCódigo: ${visit.code}\n\nNotas:\n$notesText"
+                        val shareContent = "Visit: ${visit.name}\nLocation: ${visit.location}\nCode: ${visit.code}\n\nNotes:\n$notesText"
                         val sendIntent = Intent().apply {
                             action = Intent.ACTION_SEND
                             putExtra(Intent.EXTRA_TEXT, shareContent)
                             type = "text/plain"
                         }
-                        val shareIntent = Intent.createChooser(sendIntent, "Exportar Notas")
+                        val shareIntent = Intent.createChooser(sendIntent, "Export Visit Data")
                         context.startActivity(shareIntent)
                     }) {
-                        Icon(Icons.Filled.Share, contentDescription = "Partilhar Tudo")
+                        Icon(Icons.Filled.Share, contentDescription = "Share All")
                     }
                     IconButton(onClick = { showEditVisitDialog = true }) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Editar Visita")
+                        Icon(Icons.Filled.Edit, contentDescription = "Edit Visit")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
+            ExtendedFloatingActionButton(
                 onClick = { showAddNoteDialog = true },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "Nova Anotação")
-            }
+                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                text = { Text("New Note") },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
         }
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(vertical = 24.dp)
+                .padding(innerPadding),
+            contentPadding = PaddingValues(bottom = 80.dp, top = 8.dp, start = 16.dp, end = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Card de detalhes da visita
+            // Visit Info Card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    shape = MaterialTheme.shapes.large,
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     )
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text("Detalhes", style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary)
-                        Text(visit.date, style = MaterialTheme.typography.bodyLarge)
-                        Text(visit.location, style = MaterialTheme.typography.bodyLarge)
-                        Text(visit.code, style = MaterialTheme.typography.bodyLarge)
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.CalendarToday, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(visit.date, style = MaterialTheme.typography.bodyLarge)
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.LocationOn, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(visit.location, style = MaterialTheme.typography.bodyLarge)
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.QrCode, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(visit.code, style = MaterialTheme.typography.bodyLarge)
+                        }
                     }
                 }
             }
 
-            // Secção de anexos
+            // Attachments Section
             item {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Anexos", style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary)
-                    Row {
-                        // Botão para adicionar imagem
-                        IconButton(onClick = { imagePickerLauncher.launch("image/*") }) {
-                            Icon(Icons.Filled.Image, contentDescription = "Adicionar Imagem",
-                                tint = MaterialTheme.colorScheme.primary)
+                    Text(
+                        "Attachments",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilledTonalIconButton(onClick = { imagePickerLauncher.launch("image/*") }) {
+                            Icon(Icons.Filled.Image, contentDescription = "Add Image")
                         }
-                        // Botão para adicionar ficheiro
-                        IconButton(onClick = { filePicker.launch("*/*") }) {
-                            Icon(Icons.Filled.AttachFile, contentDescription = "Adicionar Ficheiro",
-                                tint = MaterialTheme.colorScheme.primary)
+                        FilledTonalIconButton(onClick = { filePicker.launch("*/*") }) {
+                            Icon(Icons.Filled.AttachFile, contentDescription = "Add File")
                         }
                     }
                 }
@@ -216,8 +230,11 @@ fun VisitDetailScreen(
 
             if (attachments.isEmpty()) {
                 item {
-                    Text("Nenhum anexo ainda.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "No attachments yet.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
                 }
             } else {
                 items(attachments) { attachment ->
@@ -229,16 +246,24 @@ fun VisitDetailScreen(
                 }
             }
 
-            // Secção de anotações
+            // Notes Section
             item {
-                Text("Anotações", style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary)
+                Text(
+                    "Notes",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
             }
 
             if (notes.isEmpty()) {
                 item {
-                    Text("Nenhuma anotação ainda.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "No notes recorded.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
                 }
             } else {
                 items(notes) { note ->
@@ -280,25 +305,34 @@ fun AttachmentCard(attachment: Attachment, onDelete: () -> Unit, onClick: () -> 
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
         Row(
             modifier = Modifier.padding(12.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = if (attachment.type == "image") Icons.Filled.Image else Icons.Filled.AttachFile,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = if (attachment.type == "image") Icons.Filled.Image else Icons.Filled.Description,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = attachment.fileName,
                     style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -308,21 +342,107 @@ fun AttachmentCard(attachment: Attachment, onDelete: () -> Unit, onClick: () -> 
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Icon(
-                imageVector = if (attachment.isSynced) Icons.Filled.Check else Icons.Filled.Build,
-                contentDescription = if (attachment.isSynced) "Synced" else "Pending",
-                modifier = Modifier.size(16.dp),
-                tint = if (attachment.isSynced) Color(0xFF4CAF50) else Color.Gray
-            )
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = "Apagar",
-                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f))
+
+            if (!attachment.isSynced) {
+                Icon(
+                    Icons.Filled.CloudUpload,
+                    contentDescription = "Pending Sync",
+                    modifier = Modifier.size(16.dp).padding(end = 8.dp),
+                    tint = MaterialTheme.colorScheme.secondary
+                )
+            }
+
+            IconButton(
+                onClick = onDelete,
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                ),
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(Icons.Filled.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp))
             }
         }
     }
 }
 
-// Composables existentes sem alterações
+@Composable
+fun NoteCard(note: Note, onDelete: () -> Unit, onClick: () -> Unit) {
+    val context = LocalContext.current
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Text(
+                    note.content,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                if (!note.isSynced) {
+                    Icon(
+                        Icons.Filled.CloudUpload,
+                        contentDescription = "Pending Sync",
+                        modifier = Modifier.size(14.dp).padding(start = 4.dp),
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    note.date,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    IconButton(
+                        onClick = {
+                            val sendIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                putExtra(Intent.EXTRA_TEXT, note.content)
+                                type = "text/plain"
+                            }
+                            val shareIntent = Intent.createChooser(sendIntent, null)
+                            context.startActivity(shareIntent)
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Filled.Share, contentDescription = "Share", modifier = Modifier.size(18.dp))
+                    }
+                    IconButton(
+                        onClick = onDelete,
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        ),
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Filled.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun EditVisitDialog(
     visit: Visit,
@@ -336,32 +456,37 @@ fun EditVisitDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Editar Visita") },
+        shape = MaterialTheme.shapes.extraLarge,
+        title = { Text("Edit Field Visit", fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nome do Local") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Site Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
                 )
                 OutlinedTextField(
                     value = code,
                     onValueChange = { code = it },
-                    label = { Text("Código") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Code") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
                 )
                 OutlinedTextField(
                     value = location,
                     onValueChange = { location = it },
-                    label = { Text("Localização") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Location") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
                 )
                 OutlinedTextField(
                     value = date,
                     onValueChange = { date = it },
-                    label = { Text("Data") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Date") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
                 )
             }
         },
@@ -371,61 +496,12 @@ fun EditVisitDialog(
                     onConfirm(visit.copy(name = name, code = code, location = location, date = date))
                 },
                 enabled = name.isNotBlank() && code.isNotBlank() && location.isNotBlank() && date.isNotBlank()
-            ) { Text("Guardar") }
+            ) { Text("Save Changes") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
-}
-
-@Composable
-fun NoteCard(note: Note, onDelete: () -> Unit, onClick: () -> Unit) {
-    val context = LocalContext.current
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = if (note.isSynced) Icons.Filled.Check else Icons.Filled.Build,
-                contentDescription = if (note.isSynced) "Synced" else "Pending Sync",
-                modifier = Modifier.size(16.dp),
-                tint = if (note.isSynced) Color(0xFF4CAF50) else Color.Gray
-            )
-            Spacer(modifier = Modifier.padding(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(note.content, style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(note.date, style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Row {
-                IconButton(onClick = {
-                    val sendIntent = Intent().apply {
-                        action = Intent.ACTION_SEND
-                        putExtra(Intent.EXTRA_TEXT, note.content)
-                        type = "text/plain"
-                    }
-                    val shareIntent = Intent.createChooser(sendIntent, null)
-                    context.startActivity(shareIntent)
-                }) {
-                    Icon(Icons.Filled.Share, contentDescription = "Partilhar Nota", modifier = Modifier.size(20.dp))
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Filled.Delete, contentDescription = "Apagar",
-                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f))
-                }
-            }
-        }
-    }
 }
 
 @Composable
@@ -447,24 +523,26 @@ fun AddNoteDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nova Anotação") },
+        shape = MaterialTheme.shapes.extraLarge,
+        title = { Text("Add New Note", fontWeight = FontWeight.Bold) },
         text = {
             OutlinedTextField(
                 value = content,
                 onValueChange = { content = it },
-                label = { Text("Anotação") },
+                label = { Text("Observation details...") },
                 modifier = Modifier.fillMaxWidth(),
-                minLines = 3,
+                minLines = 4,
+                shape = MaterialTheme.shapes.medium,
                 trailingIcon = {
                     IconButton(onClick = {
                         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-PT")
-                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Fale para escrever a anotação...")
+                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
+                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to record note...")
                         }
                         speechRecognizerLauncher.launch(intent)
                     }) {
-                        Icon(imageVector = Icons.Filled.Mic, contentDescription = "Voz para Texto")
+                        Icon(imageVector = Icons.Filled.Mic, contentDescription = "Voice to Text", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
             )
@@ -472,11 +550,12 @@ fun AddNoteDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
         confirmButton = {
             Button(
                 onClick = { onConfirm(content) },
-                enabled = content.isNotBlank()
-            ) { Text("Guardar") }
+                enabled = content.isNotBlank(),
+                shape = MaterialTheme.shapes.medium
+            ) { Text("Record Note") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
 }
