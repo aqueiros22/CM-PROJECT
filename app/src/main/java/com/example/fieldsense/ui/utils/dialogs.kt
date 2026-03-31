@@ -28,7 +28,7 @@ fun VisitCard(visit: Visit, onDelete: () -> Unit, onClick: () -> Unit) {
             .padding(horizontal = 4.dp),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            containerColor = Color(0xA0E8F5E9)
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -164,7 +164,7 @@ fun AddVisitDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = MaterialTheme.shapes.extraLarge,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        containerColor = Color(0xF0E8F5E9),
         title = {
             Text(
                 "New Field Visit",
