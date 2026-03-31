@@ -60,6 +60,7 @@ import java.util.Date
 import java.util.Locale
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.LocationServices
@@ -82,7 +83,10 @@ import com.example.fieldsense.location.getAddressFromLocation
 import com.example.fieldsense.ui.auth.AuthState
 import com.example.fieldsense.ui.auth.AuthViewModel
 import com.example.fieldsense.ui.auth.AuthViewModelFactory
-
+import com.example.fieldsense.ui.map.DownloadedMapsScreen
+import com.example.fieldsense.ui.map.PreviewMapScreen
+import org.maplibre.compose.offline.OfflineManager
+import org.maplibre.compose.offline.rememberOfflineManager
 
 
 class MainActivity : ComponentActivity() {
@@ -90,13 +94,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        val cloudinaryConfig = mapOf(
-            "cloud_name" to BuildConfig.CLOUDINARY_CLOUD_NAME,
-            "api_key" to BuildConfig.CLOUDINARY_API_KEY,
-            "api_secret" to BuildConfig.CLOUDINARY_API_SECRET
-        )
-        MediaManager.init(this, cloudinaryConfig)
 
         val authRepository = AuthRepository(Firebase.auth)
         val authFactory = AuthViewModelFactory(authRepository)
@@ -651,6 +648,7 @@ enum class Destination(
 ) {
     MAIN("home", "", Icons.Default.Home, ""),
     MAP("map", "", Icons.Default.LocationOn, ""),
+    DOWNLOADED_MAPS("downloaded_map", "", Icons.Default.Download, ""),
 }
 
 @Composable
@@ -659,6 +657,7 @@ fun AppNavHost(
     startDestination: Destination,
     userId: String,
     email: String,
+    offlineManager: OfflineManager,
     visitViewModel: VisitViewModel,
     locationViewModel: LocationViewModel,
     onLogout: () -> Unit,
@@ -680,10 +679,11 @@ fun AppNavHost(
                         noteFactory =  noteFactory,
                         attachmentFactory = attachmentFactory)
                     Destination.MAP -> MapScreen(Modifier, locationViewModel, onNavigateToOfflineMap = {navController.navigate("offline_map")})
+                    Destination.DOWNLOADED_MAPS -> DownloadedMapsScreen(offlineManager)
                 }
             }
         }
-        composable("offline_map") { OfflineMapScreen() }
+        composable("offline_map") { OfflineMapScreen(offlineManager) }
     }
 }
 
@@ -701,7 +701,7 @@ fun NavigationBar(
     val navController = rememberNavController()
     val startDestination = Destination.MAIN
     var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }
-
+    val offlineManager = rememberOfflineManager()
     Scaffold(
         modifier = modifier,
         bottomBar = {
@@ -733,6 +733,7 @@ fun NavigationBar(
                 startDestination,
                 userId,
                 email,
+                offlineManager,
                 visitViewModel,
                 locationViewModel,
                 onLogout,
