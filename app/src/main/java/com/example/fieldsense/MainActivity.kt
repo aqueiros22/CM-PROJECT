@@ -1,6 +1,5 @@
 package com.example.fieldsense
 
-import android.app.Activity
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
@@ -12,41 +11,26 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.fieldsense.ui.theme.FieldSenseTheme
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.fieldsense.data.local.AppDatabase
 import com.example.fieldsense.data.remote.FirestoreService
-import com.example.fieldsense.data.model.Visit
 import com.example.fieldsense.data.repository.VisitRepository
 import com.example.fieldsense.ui.visits.VisitViewModel
 import com.example.fieldsense.ui.visits.VisitViewModelFactory
@@ -66,22 +50,20 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import com.cloudinary.android.MediaManager
 import com.example.fieldsense.data.remote.CloudinaryService
 import com.example.fieldsense.data.repository.AttachmentRepository
 import com.example.fieldsense.data.repository.AuthRepository
 import com.example.fieldsense.ui.map.LocationViewModel
-import com.example.fieldsense.ui.map.MapScreen
-import com.example.fieldsense.ui.map.OfflineMapScreen
 import com.example.fieldsense.ui.visits.VisitDetailScreen
 import com.example.fieldsense.location.getAddressFromLocation
 import com.example.fieldsense.ui.auth.AuthState
 import com.example.fieldsense.ui.auth.AuthViewModel
 import com.example.fieldsense.ui.auth.AuthViewModelFactory
+import com.example.fieldsense.ui.auth.AuthenticationScreen
+import com.example.fieldsense.ui.utils.AddVisitDialog
+import com.example.fieldsense.ui.utils.NavigationBar
+import com.example.fieldsense.ui.utils.VisitCard
 
 
 
@@ -152,160 +134,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun AuthenticationScreen(
-    authViewModel: AuthViewModel,
-    authState: AuthState,
-    modifier: Modifier = Modifier
-) {
-    var email by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
-    var isLoginMode by rememberSaveable { mutableStateOf(true) }
-
-    val context = LocalContext.current
-
-    LaunchedEffect(authState) {
-        if (authState is AuthState.Error) {
-            Toast.makeText(context, authState.message, Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    val token = stringResource(R.string.default_web_client_id)
-    val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-        .requestIdToken(token)
-        .requestEmail()
-        .build()
-
-    val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-            try {
-                val account = task.getResult(ApiException::class.java)
-                account.idToken?.let { idToken ->
-                    authViewModel.authenticateWithGoogle(idToken)
-                }
-            } catch (e: ApiException) {
-                Toast.makeText(context, "Google Sign-In Failed.", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp)
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.Center
-    ) {
-
-        Text(
-            text = if (isLoginMode) "Sign In" else "Create Account",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Normal,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(bottom = 32.dp)
-        )
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium,
-            enabled = authState !is AuthState.Loading
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium,
-            enabled = authState !is AuthState.Loading
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Button(
-            onClick = {
-                authViewModel.authenticateWithEmail(email, password, isLoginMode)
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            shape = MaterialTheme.shapes.small,
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
-            enabled = authState !is AuthState.Loading
-        ) {
-            if (authState is AuthState.Loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-            } else {
-                Text(
-                    text = if (isLoginMode) "Continue" else "Register",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        TextButton(
-            onClick = { isLoginMode = !isLoginMode },
-            modifier = Modifier.align(Alignment.CenterHorizontally),
-            enabled = authState !is AuthState.Loading
-        ) {
-            Text(
-                text = if (isLoginMode) "Don't have an account? Sign up" else "Already have an account? Sign in",
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            HorizontalDivider(modifier = Modifier.weight(1f))
-            Text(" OR ", color = Color.Gray, modifier = Modifier.padding(horizontal = 8.dp))
-            HorizontalDivider(modifier = Modifier.weight(1f))
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        OutlinedButton(
-            onClick = { launcher.launch(googleSignInClient.signInIntent) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            shape = MaterialTheme.shapes.small,
-            enabled = authState !is AuthState.Loading
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_google),
-                contentDescription = "Google Logo",
-                modifier = Modifier.size(24.dp),
-                tint = Color.Unspecified
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "Continue with Google",
-                color = MaterialTheme.colorScheme.onBackground,
-                fontSize = 16.sp
-            )
         }
     }
 }
@@ -497,152 +325,6 @@ fun MainScreen(
         }
     }
 }
-@Composable
-fun VisitCard(visit: Visit, onDelete: () -> Unit, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = visit.name,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Icon(
-                        imageVector = if (visit.isSynced) Icons.Filled.Check else Icons.Filled.Build,
-                        contentDescription = if (visit.isSynced) "Synced" else "Pending Sync",
-                        modifier = Modifier.size(16.dp),
-                        tint = if (visit.isSynced) Color(0xFF4CAF50) else Color.Gray
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = "Code: ${visit.code}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "Location: ${visit.location}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Text(
-                    text = visit.date,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (visit.isSynced) MaterialTheme.colorScheme.primary else Color.Gray
-                )
-            }
-            IconButton(
-                onClick = onDelete,
-                colors = IconButtonDefaults.iconButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-                )
-            ) {
-                Icon(Icons.Filled.Delete, contentDescription = "Delete Visit")
-            }
-        }
-    }
-}
-@Composable
-fun AddVisitDialog(
-    initialLocation: String,
-    onDismiss: () -> Unit,
-    onConfirm: (String, String, String) -> Unit
-){
-    var code by rememberSaveable { mutableStateOf("") }
-    var name by rememberSaveable { mutableStateOf("") }
-    var location by rememberSaveable { mutableStateOf(initialLocation) }
-
-    LaunchedEffect(initialLocation) {
-        location = initialLocation
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = MaterialTheme.shapes.large,
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = {
-            Text(
-                "New Visit",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = code,
-                    onValueChange = { code = it },
-                    label = { Text("Code") },
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Site Name") },
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = location,
-                    onValueChange = { location = it },
-                    label = { Text("Location") },
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth(),
-                    trailingIcon = {
-                        if (location == "Fetching location..." || location == "Finding address...") {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.dp
-                            )
-                        }
-                    }
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onConfirm(code, name, location) },
-                enabled = code.isNotBlank() &&
-                        name.isNotBlank() &&
-                        location.isNotBlank() &&
-                        location != "Fetching location..." &&
-                        location != "Finding address...",
-                shape = MaterialTheme.shapes.small
-            ) {
-                Text("Save Visit")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    )
-}
-
-
-
 enum class Destination(
     val route: String,
     val label: String,
@@ -651,95 +333,4 @@ enum class Destination(
 ) {
     MAIN("home", "", Icons.Default.Home, ""),
     MAP("map", "", Icons.Default.LocationOn, ""),
-}
-
-@Composable
-fun AppNavHost(
-    navController: NavHostController,
-    startDestination: Destination,
-    userId: String,
-    email: String,
-    visitViewModel: VisitViewModel,
-    locationViewModel: LocationViewModel,
-    onLogout: () -> Unit,
-    noteFactory: NoteViewModelFactory,
-    attachmentFactory: AttachmentViewModelFactory
-) {
-    NavHost(
-        navController,
-        startDestination = startDestination.route
-    ) {
-        Destination.entries.forEach { destination ->
-            composable(destination.route) {
-                when (destination) {
-                    Destination.MAIN -> MainScreen(
-                        userId = userId,
-                        email = email,
-                        visitViewModel = visitViewModel,
-                        onLogout = onLogout,
-                        noteFactory =  noteFactory,
-                        attachmentFactory = attachmentFactory)
-                    Destination.MAP -> MapScreen(Modifier, locationViewModel, onNavigateToOfflineMap = {navController.navigate("offline_map")})
-                }
-            }
-        }
-        composable("offline_map") { OfflineMapScreen() }
-    }
-}
-
-@Composable
-fun NavigationBar(
-    modifier: Modifier = Modifier,
-    userId: String,
-    email: String,
-    visitViewModel: VisitViewModel,
-    locationViewModel: LocationViewModel,
-    onLogout: () -> Unit,
-    noteFactory: NoteViewModelFactory,
-    attachmentFactory: AttachmentViewModelFactory
-) {
-    val navController = rememberNavController()
-    val startDestination = Destination.MAIN
-    var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }
-
-    Scaffold(
-        modifier = modifier,
-        bottomBar = {
-            NavigationBar(windowInsets = NavigationBarDefaults.windowInsets) {
-                Destination.entries.forEachIndexed { index, destination ->
-                    NavigationBarItem(
-                        selected = selectedDestination == index,
-                        onClick = {
-                            navController.navigate(route = destination.route)
-                            selectedDestination = index
-                        },
-                        icon = {
-                            Icon(
-                                destination.icon,
-                                contentDescription = destination.contentDescription
-                            )
-                        }
-
-                    )
-                }
-            }
-        }
-    ) { contentPadding ->
-        Box(
-            modifier = Modifier.padding(contentPadding)
-        ) {
-            AppNavHost(
-                navController,
-                startDestination,
-                userId,
-                email,
-                visitViewModel,
-                locationViewModel,
-                onLogout,
-                noteFactory,
-                attachmentFactory
-            )
-        }
-
-    }
 }
