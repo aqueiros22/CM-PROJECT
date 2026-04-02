@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.compose.sources.GeoJsonData
 import org.maplibre.spatialk.geojson.BoundingBox
 import org.maplibre.spatialk.geojson.Position
 
@@ -40,13 +41,20 @@ data class BoundingBoxState(
             northeast = Position(maxOf(p1.longitude, p2.longitude), maxOf(p1.latitude, p2.latitude))
         )
     }
+
+    fun getPointsGeoJson(): GeoJsonData {
+        val points = listOfNotNull(point1, point2)
+        val features = points.joinToString(",") { p ->
+            """{"type":"Feature","geometry":{"type":"Point","coordinates":[${p.longitude},${p.latitude}]}}"""
+        }
+        return GeoJsonData.JsonString("""{"type":"FeatureCollection","features":[$features]}""")
+    }
 }
 
 
 class BoundingBoxViewModel : ViewModel() {
     var state by mutableStateOf(BoundingBoxState())
         private set
-    var previewLocation by mutableStateOf<Position?>(null)
     fun onMapTap(latLng: LatLng) {
         state = when {
             state.point1 == null -> state.copy(point1 = latLng)
@@ -58,9 +66,4 @@ class BoundingBoxViewModel : ViewModel() {
 
     fun reset() { state = BoundingBoxState() }
 
-    fun getBoundingBox(): Pair<LatLng, LatLng>? {
-        val p1 = state.point1 ?: return null
-        val p2 = state.point2 ?: return null
-        return Pair(p1, p2)
-    }
 }

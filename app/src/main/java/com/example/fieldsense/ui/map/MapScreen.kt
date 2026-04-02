@@ -16,7 +16,9 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -40,6 +42,7 @@ import androidx.core.app.ActivityCompat
 import com.example.fieldsense.BuildConfig
 import com.example.fieldsense.MainActivity
 import com.example.fieldsense.location.LocationHelper
+import com.example.fieldsense.ui.theme.Shapes
 import kotlinx.serialization.json.JsonObject
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
@@ -77,7 +80,7 @@ fun DisplayLocation(
     val location = viewModel.location.value
     val cameraState = rememberCameraState(
         firstPosition = CameraPosition(
-            target = Position(38.7169, -9.1399),
+            target = Position(-8.6291, 41.1579),
             zoom = 5.0
         )
     )
@@ -100,7 +103,7 @@ fun DisplayLocation(
                 )
             }
         } ?: run {
-            Toast.makeText(context, "Location not found, please try again", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Localização não encontrada, tente novamente.", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -123,12 +126,12 @@ fun DisplayLocation(
                 if(rationaleRequired){
                     Toast.makeText(
                         context,
-                        " This feature requires location permission",
+                        " Esta funcionalidade requer permissões de localização",
                         Toast.LENGTH_LONG).show()
                 } else {
                     // need to set permission from settings
                     Toast.makeText(context,
-                        "Please, activate location permission in phone settings",
+                        "Ative as permissões de localização nas definições",
                         Toast.LENGTH_LONG).show()
                 }
 
@@ -170,7 +173,7 @@ fun DisplayLocation(
 
     SimpleSearchBar(textFieldState, onSearch, searchResults, viewModel = viewModel, onResultSelected = onResultSelected)
     Column( modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.Bottom
         ) {
         if (location != null) {
@@ -178,38 +181,46 @@ fun DisplayLocation(
         } else {
             Text("Location not available")
         }
-
-        Button(onClick = {
-            if (myLocationHelper.hasLocationPermission(context)){
-                // permission granter -> update location
-                myLocationHelper.requestLocationUpdates(viewModel= viewModel)
-                location?.let {
-                    coroutineScope.launch {
-                        cameraState.animateTo(
-                            CameraPosition(
-                                target = Position(it.longitude, it.latitude),
-                                zoom = 15.0
+        Row(
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.Bottom,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 40.dp)
+        ) {
+            Button(shape = Shapes.medium, onClick = {
+                if (myLocationHelper.hasLocationPermission(context)){
+                    // permission granter -> update location
+                    myLocationHelper.requestLocationUpdates(viewModel= viewModel)
+                    location?.let {
+                        coroutineScope.launch {
+                            cameraState.animateTo(
+                                CameraPosition(
+                                    target = Position(it.longitude, it.latitude),
+                                    zoom = 15.0
+                                )
                             )
-                        )
+                        }
                     }
                 }
-            }
-            else {
-                // Request location permission
-                requestPermissionLauncher.launch(
-                    arrayOf(
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
+                else {
+                    // Request location permission
+                    requestPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
                     )
-                )
-            }
+                }
 
-        }) {
-            Text("Get Location")
+            }) {
+                Text("Minha localização")
+            }
+            Button( shape = Shapes.medium, onClick = onNavigateToOfflineMap) {
+                Text(text = "Mapas offline")
+            }
         }
-        Button( onClick = onNavigateToOfflineMap) {
-            Text(text = "Offline Maps")
-        }
+
 
 
 

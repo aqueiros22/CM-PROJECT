@@ -94,8 +94,8 @@ fun DownloadedMapsScreen(
     packToDelete?.let { pack ->
         AlertDialog(
             onDismissRequest = { packToDelete = null },
-            title = { Text("Delete map") },
-            text = { Text("Are you sure you want to delete \"${pack.metadata?.decodeToString()}\"?") },
+            title = { Text("Apagar mapa") },
+            text = { Text("Deseja apagar o mapa \"${pack.metadata?.decodeToString()}\"?") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -105,7 +105,7 @@ fun DownloadedMapsScreen(
                         packToDelete = null
                     }
                 ) {
-                    Text("Delete", color = Color.Red)
+                    Text("Apagar", color = Color.Red)
                 }
             },
             dismissButton = {
@@ -175,8 +175,6 @@ fun DownloadedMapsScreen(
                             pack = pack,
                             onPreview = { onPreviewPack(pack) },
                             onDelete = { packToDelete = pack },
-                            onPause = { offlineManager.pause(pack) },
-                            onResume = { coroutineScope.launch { offlineManager.resume(pack) } }
                         )
                     }
                 }
@@ -192,8 +190,6 @@ fun DownloadedMapCard(
     pack: OfflinePack,
     onPreview: () -> Unit,
     onDelete: () -> Unit,
-    onPause: () -> Unit,
-    onResume: () -> Unit
 ) {
     val packName = remember(pack) {
         pack.metadata?.decodeToString()?.ifEmpty { "Unknown" } ?: "Unknown"

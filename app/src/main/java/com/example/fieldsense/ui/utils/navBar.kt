@@ -61,7 +61,7 @@ fun AppNavHost(
                 }
             }
         }
-        composable("offline_map") { OfflineMapScreen(offlineManager) }
+        composable("offline_map") { OfflineMapScreen({ navController.popBackStack() }, offlineManager) }
     }
 }
 
