@@ -94,8 +94,8 @@ fun DownloadedMapsScreen(
     packToDelete?.let { pack ->
         AlertDialog(
             onDismissRequest = { packToDelete = null },
-            title = { Text("Delete map") },
-            text = { Text("Are you sure you want to delete \"${pack.metadata?.decodeToString()}\"?") },
+            title = { Text("Apagar Mapa") },
+            text = { Text("Tens a certeza que quer apagar o mapa \"${pack.metadata?.decodeToString()}\"?") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -105,12 +105,12 @@ fun DownloadedMapsScreen(
                         packToDelete = null
                     }
                 ) {
-                    Text("Delete", color = Color.Red)
+                    Text("Apagar", color = Color.Red)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { packToDelete = null }) {
-                    Text("Cancel")
+                    Text("Cancelar")
                 }
             }
         )
@@ -127,7 +127,7 @@ fun DownloadedMapsScreen(
             ) {
 
                 Text(
-                    text = "Downloaded Maps",
+                    text = "Mapas transferidos",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -253,7 +253,7 @@ fun DownloadedMapCard(
                 IconButton(onClick = onDelete) {
                     Icon(
                         Icons.Default.Delete,
-                        contentDescription = "Delete",
+                        contentDescription = "Apagar",
                         tint = Color.Red
                     )
                 }

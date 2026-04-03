@@ -86,7 +86,7 @@ fun AuthenticationScreen(
                     authViewModel.authenticateWithGoogle(idToken)
                 }
             } catch (e: ApiException) {
-                Toast.makeText(context, "Google Sign-In Failed.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Início de sessão com google falhado.", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -101,7 +101,7 @@ fun AuthenticationScreen(
     ) {
 
         Text(
-            text = if (isLoginMode) "Sign In" else "Create Account",
+            text = "Fieldsense",
             fontSize = 28.sp,
             fontWeight = FontWeight.Normal,
             color = MaterialTheme.colorScheme.onBackground,
@@ -149,7 +149,7 @@ fun AuthenticationScreen(
                 )
             } else {
                 Text(
-                    text = if (isLoginMode) "Continue" else "Register",
+                    text = if (isLoginMode) "Log In" else "Registar",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -164,7 +164,7 @@ fun AuthenticationScreen(
             enabled = authState !is AuthState.Loading
         ) {
             Text(
-                text = if (isLoginMode) "Don't have an account? Sign up" else "Already have an account? Sign in",
+                text = if (isLoginMode) "Não tens conta? Regista-te" else "Já tens conta? Inicia sessão",
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -173,7 +173,7 @@ fun AuthenticationScreen(
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             HorizontalDivider(modifier = Modifier.weight(1f))
-            Text(" OR ", color = Color.Gray, modifier = Modifier.padding(horizontal = 8.dp))
+            Text(" OU ", color = Color.Gray, modifier = Modifier.padding(horizontal = 8.dp))
             HorizontalDivider(modifier = Modifier.weight(1f))
         }
 
@@ -195,7 +195,7 @@ fun AuthenticationScreen(
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = "Continue with Google",
+                text = "Continuar com Google",
                 color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 16.sp
             )

@@ -33,8 +33,8 @@ fun VisitCard(
 
     if (showDeleteDialog) {
         DeleteConfirmationDialog(
-            title = "Delete Permanently",
-            message = "Are you sure you want to delete \"${visit.name}\"? This action cannot be undone.",
+            title = "Apagar Visita",
+            message = "Tens a certeza de que queres eliminar esta visita? Esta ação não pode ser desfeita.",
             onConfirm = {
                 onDelete()
                 showDeleteDialog = false
@@ -46,13 +46,13 @@ fun VisitCard(
     if (showArchiveDialog) {
         AlertDialog(
             onDismissRequest = { showArchiveDialog = false },
-            title = { Text("Archive Visit") },
-            text = { Text("Are you sure you want to archive this visit? It will be moved to the Archived section.") },
+            title = { Text("Arquivar Visita") },
+            text = { Text("Tens a certeza de que queres arquivar esta visita? Será movida para a secção de Arquivadas.") },
             confirmButton = {
                 Button(onClick = {
                     onArchive()
                     showArchiveDialog = false
-                }) { Text("Archive") }
+                }) { Text("Arquivar") }
             },
             dismissButton = {
                 TextButton(onClick = { showArchiveDialog = false }) { Text("Cancel") }
@@ -121,7 +121,7 @@ fun VisitCard(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = if (visit.isSynced) "Synced" else "Pending",
+                                text = if (visit.isSynced) "Sincronizado" else "Pendente",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = if (visit.isSynced) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
@@ -249,7 +249,7 @@ fun AddVisitDialog(
         containerColor = Color(0xF0E8F5E9),
         title = {
             Text(
-                "New Field Visit",
+                "Nova Visita",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -259,8 +259,7 @@ fun AddVisitDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Site Name") },
-                    placeholder = { Text("e.g. Olive Grove A1") },
+                    label = { Text("Nome") },
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
@@ -268,8 +267,7 @@ fun AddVisitDialog(
                 OutlinedTextField(
                     value = code,
                     onValueChange = { code = it },
-                    label = { Text("Visit Code") },
-                    placeholder = { Text("e.g. V-2023-001") },
+                    label = { Text("Código da Visita") },
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
@@ -277,7 +275,7 @@ fun AddVisitDialog(
                 OutlinedTextField(
                     value = location,
                     onValueChange = { location = it },
-                    label = { Text("Location") },
+                    label = { Text("Localização") },
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
@@ -300,12 +298,12 @@ fun AddVisitDialog(
                 shape = MaterialTheme.shapes.medium,
                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
             ) {
-                Text("Create Visit")
+                Text("Criar Visita")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancelar")
             }
         }
     )
@@ -328,12 +326,12 @@ fun DeleteConfirmationDialog(
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) {
-                Text("Delete")
+                Text("Apagar")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancelar")
             }
         }
     )

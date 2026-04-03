@@ -100,7 +100,7 @@ fun DisplayLocation(
                 )
             }
         } ?: run {
-            Toast.makeText(context, "Location not found, please try again", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Localização não encontrada, tente novamente", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -123,12 +123,12 @@ fun DisplayLocation(
                 if(rationaleRequired){
                     Toast.makeText(
                         context,
-                        " This feature requires location permission",
+                        "Esta funcionalidade requer permissão de localização",
                         Toast.LENGTH_LONG).show()
                 } else {
                     // need to set permission from settings
                     Toast.makeText(context,
-                        "Please, activate location permission in phone settings",
+                        "Por favor, ative a permissão de localização nas definições do telefone",
                         Toast.LENGTH_LONG).show()
                 }
 
@@ -174,9 +174,9 @@ fun DisplayLocation(
         verticalArrangement = Arrangement.Bottom
         ) {
         if (location != null) {
-            Text("Location: lat: ${location.latitude}, long: ${location.longitude}")
+            Text("Localização: lat: ${location.latitude}, long: ${location.longitude}")
         } else {
-            Text("Location not available")
+            Text("Localização indisponível")
         }
 
         Button(onClick = {
@@ -205,10 +205,10 @@ fun DisplayLocation(
             }
 
         }) {
-            Text("Get Location")
+            Text("Obter Localização")
         }
         Button( onClick = onNavigateToOfflineMap) {
-            Text(text = "Offline Maps")
+            Text(text = "Mapas Offline")
         }
 
 
@@ -253,11 +253,15 @@ fun SimpleSearchBar(
                     },
                     expanded = expanded,
                     onExpandedChange = { expanded = it },
-                    placeholder = { Text("Search") }
+                    placeholder = { Text("Pesquisar") },
                 )
             },
             expanded = expanded,
             onExpandedChange = { expanded = it },
+            colors = SearchBarDefaults.colors(
+                containerColor = Color(0xFFF5F5F5),
+                dividerColor = Color.Transparent,
+            )
         ) {
             // Display search results in a scrollable column
             Column(Modifier.verticalScroll(rememberScrollState())) {

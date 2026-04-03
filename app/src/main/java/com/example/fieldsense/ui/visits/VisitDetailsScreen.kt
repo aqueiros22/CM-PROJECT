@@ -25,10 +25,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.fieldsense.BuildConfig
+import com.example.fieldsense.R
 import com.example.fieldsense.data.model.Attachment
 import com.example.fieldsense.data.model.Note
 import com.example.fieldsense.data.model.Visit
@@ -138,7 +140,7 @@ fun VisitDetailScreen(
                             style = MaterialTheme.typography.headlineMedium
                         )
                         Text(
-                            "Visit Details & Notes",
+                            "Detalhes da Visita e Notas",
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -146,25 +148,25 @@ fun VisitDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cancel))
                     }
                 },
                 actions = {
                     IconButton(onClick = {
                         val notesText = notes.joinToString("\n\n") { "${it.date}:\n${it.content}" }
-                        val shareContent = "Visit: ${visit.name}\nLocation: ${visit.location}\nCode: ${visit.code}\n\nNotes:\n$notesText"
+                        val shareContent = "Visita: ${visit.name}\nLocalização: ${visit.location}\nCódigo: ${visit.code}\n\nNotas:\n$notesText"
                         val sendIntent = Intent().apply {
                             action = Intent.ACTION_SEND
                             putExtra(Intent.EXTRA_TEXT, shareContent)
                             type = "text/plain"
                         }
-                        val shareIntent = Intent.createChooser(sendIntent, "Export Visit Data")
+                        val shareIntent = Intent.createChooser(sendIntent, "Exportar Dados da Visita")
                         context.startActivity(shareIntent)
                     }) {
-                        Icon(Icons.Filled.Share, contentDescription = "Share All")
+                        Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.share))
                     }
                     IconButton(onClick = { showEditVisitDialog = true }) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Edit Visit")
+                        Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.edit_visit))
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -179,7 +181,7 @@ fun VisitDetailScreen(
             ExtendedFloatingActionButton(
                 onClick = { showAddNoteDialog = true },
                 icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text("New Note") },
+                text = { Text(stringResource(R.string.new_note)) },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )
@@ -236,7 +238,7 @@ fun VisitDetailScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Attachments",
+                        stringResource(R.string.attachments),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
@@ -246,13 +248,13 @@ fun VisitDetailScreen(
                             colors = IconButtonDefaults.filledTonalIconButtonColors(
                                 containerColor = Color(0xF0E8F5E9)
                             )) {
-                            Icon(Icons.Filled.Image, contentDescription = "Add Image", tint = Color.Black)
+                            Icon(Icons.Filled.Image, contentDescription = "Adicionar Imagem", tint = Color.Black)
                         }
                         FilledTonalIconButton(onClick = { filePicker.launch("*/*") },
                             colors = IconButtonDefaults.filledTonalIconButtonColors(
                                 containerColor = Color(0xF0E8F5E9)
                             )) {
-                            Icon(Icons.Filled.AttachFile, contentDescription = "Add File", tint = Color.Black)
+                            Icon(Icons.Filled.AttachFile, contentDescription = "Adicionar Ficheiro", tint = Color.Black)
                         }
                     }
                 }
@@ -261,7 +263,7 @@ fun VisitDetailScreen(
             if (attachments.isEmpty()) {
                 item {
                     Text(
-                        "No attachments yet.",
+                        stringResource(R.string.no_attachments),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -279,7 +281,7 @@ fun VisitDetailScreen(
             // Notes Section
             item {
                 Text(
-                    "Notes",
+                    stringResource(R.string.notes),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 8.dp),
@@ -290,7 +292,7 @@ fun VisitDetailScreen(
             if (notes.isEmpty()) {
                 item {
                     Text(
-                        "No notes recorded.",
+                        stringResource(R.string.no_notes),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -380,13 +382,13 @@ fun VisitAreaMapSection(visit: Visit, onEditArea: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Visit Area",
+                stringResource(R.string.visit_area),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
             TextButton(onClick = onEditArea) {
-                Text(if (points.isEmpty()) "Define Area" else "Edit Area")
+                Text(if (points.isEmpty()) stringResource(R.string.define_area) else stringResource(R.string.edit_area))
             }
         }
         
@@ -461,7 +463,7 @@ fun VisitAreaMapSection(visit: Visit, onEditArea: () -> Unit) {
                             shape = CircleShape
                         ) {
                             Text(
-                                "No area defined",
+                                stringResource(R.string.no_area),
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                 color = Color.White,
                                 style = MaterialTheme.typography.labelMedium
@@ -480,8 +482,8 @@ fun AttachmentCard(attachment: Attachment, onDelete: () -> Unit, onClick: () -> 
 
     if (showDeleteDialog) {
         DeleteConfirmationDialog(
-            title = "Delete Attachment",
-            message = "Are you sure you want to delete this attachment?",
+            title = "Apagar Anexo",
+            message = "Tem a certeza que deseja apagar este anexo?",
             onConfirm = {
                 onDelete()
                 showDeleteDialog = false
@@ -535,7 +537,7 @@ fun AttachmentCard(attachment: Attachment, onDelete: () -> Unit, onClick: () -> 
             if (!attachment.isSynced) {
                 Icon(
                     Icons.Filled.CloudUpload,
-                    contentDescription = "Pending Sync",
+                    contentDescription = stringResource(R.string.pending),
                     modifier = Modifier.size(16.dp).padding(end = 8.dp),
                     tint = MaterialTheme.colorScheme.secondary
                 )
@@ -549,7 +551,7 @@ fun AttachmentCard(attachment: Attachment, onDelete: () -> Unit, onClick: () -> 
                 ),
                 modifier = Modifier.size(32.dp)
             ) {
-                Icon(Icons.Filled.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp))
+                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete), modifier = Modifier.size(16.dp))
             }
         }
     }
@@ -562,8 +564,8 @@ fun NoteCard(note: Note, onDelete: () -> Unit, onClick: () -> Unit) {
 
     if (showDeleteDialog) {
         DeleteConfirmationDialog(
-            title = "Delete Note",
-            message = "Are you sure you want to delete this note?",
+            title = "Apagar Nota",
+            message = "Tem a certeza que deseja apagar esta nota?",
             onConfirm = {
                 onDelete()
                 showDeleteDialog = false
@@ -596,7 +598,7 @@ fun NoteCard(note: Note, onDelete: () -> Unit, onClick: () -> Unit) {
                 if (!note.isSynced) {
                     Icon(
                         Icons.Filled.CloudUpload,
-                        contentDescription = "Pending Sync",
+                        contentDescription = stringResource(R.string.pending),
                         modifier = Modifier.size(20.dp).padding(start = 4.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -629,7 +631,7 @@ fun NoteCard(note: Note, onDelete: () -> Unit, onClick: () -> Unit) {
                         },
                         modifier = Modifier.size(32.dp)
                     ) {
-                        Icon(Icons.Filled.Share, contentDescription = "Share", modifier = Modifier.size(18.dp), Color.Black   )
+                        Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.share), modifier = Modifier.size(18.dp), Color.Black   )
                     }
                     IconButton(
                         onClick = { showDeleteDialog = true },
@@ -639,7 +641,7 @@ fun NoteCard(note: Note, onDelete: () -> Unit, onClick: () -> Unit) {
                         ),
                         modifier = Modifier.size(32.dp)
                     ) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp))
+                        Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete), modifier = Modifier.size(16.dp))
                     }
                 }
             }
@@ -661,35 +663,35 @@ fun EditVisitDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = MaterialTheme.shapes.extraLarge,
-        title = { Text("Edit Field Visit", fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.edit_visit), fontWeight = FontWeight.Bold) },
         containerColor = Color(0xF0E8F5E9),
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Site Name") },
+                    label = { Text(stringResource(R.string.site_name)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium
                 )
                 OutlinedTextField(
                     value = code,
                     onValueChange = { code = it },
-                    label = { Text("Code") },
+                    label = { Text(stringResource(R.string.visit_code)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium
                 )
                 OutlinedTextField(
                     value = location,
                     onValueChange = { location = it },
-                    label = { Text("Location") },
+                    label = { Text(stringResource(R.string.location)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium
                 )
                 OutlinedTextField(
                     value = date,
                     onValueChange = { date = it },
-                    label = { Text("Date") },
+                    label = { Text("Data") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium
                 )
@@ -701,10 +703,10 @@ fun EditVisitDialog(
                     onConfirm(visit.copy(name = name, code = code, location = location, date = date))
                 },
                 enabled = name.isNotBlank() && code.isNotBlank() && location.isNotBlank() && date.isNotBlank()
-            ) { Text("Save Changes") }
+            ) { Text(stringResource(R.string.save_changes)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }
@@ -729,13 +731,13 @@ fun AddNoteDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = MaterialTheme.shapes.extraLarge,
-        title = { Text("Add New Note", fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.add_note_title), fontWeight = FontWeight.Bold) },
         containerColor = Color(0xF0E8F5E9),
         text = {
             OutlinedTextField(
                 value = content,
                 onValueChange = { content = it },
-                label = { Text("Observation details...") },
+                label = { Text(stringResource(R.string.note_details_hint)) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 4,
                 shape = MaterialTheme.shapes.medium,
@@ -743,12 +745,12 @@ fun AddNoteDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
                     IconButton(onClick = {
                         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
-                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to record note...")
+                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-PT")
+                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Fale para gravar nota...")
                         }
                         speechRecognizerLauncher.launch(intent)
                     }) {
-                        Icon(imageVector = Icons.Filled.Mic, contentDescription = "Voice to Text", tint = MaterialTheme.colorScheme.primary)
+                        Icon(imageVector = Icons.Filled.Mic, contentDescription = "Voz para Texto", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
             )
@@ -758,10 +760,10 @@ fun AddNoteDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
                 onClick = { onConfirm(content) },
                 enabled = content.isNotBlank(),
                 shape = MaterialTheme.shapes.medium
-            ) { Text("Record Note") }
+            ) { Text(stringResource(R.string.record_note)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }

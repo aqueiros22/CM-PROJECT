@@ -87,7 +87,7 @@ fun VisitAreaDrawingScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Draw Visit Area", fontWeight = FontWeight.Bold) },
+                title = { Text("Desenhar Área da Visita", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -102,11 +102,11 @@ fun VisitAreaDrawingScreen(
                             } else if (points.isEmpty()) {
                                 onSave(null)
                             } else {
-                                Toast.makeText(context, "Need at least 3 points", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Marca pelo menos 3 pontos", Toast.LENGTH_SHORT).show()
                             }
                         }
                     ) {
-                        Text("SAVE", fontWeight = FontWeight.Bold)
+                        Text("Guardar", fontWeight = FontWeight.Bold)
                     }
                 }
             )
@@ -202,20 +202,6 @@ fun VisitAreaDrawingScreen(
                         width = const(3.dp)
                     )
                 }
-            }
-            
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier
-                    .padding(16.dp)
-                    .align(Alignment.BottomCenter)
-            ) {
-                Text(
-                    text = "Tap on the map to define the perimeter. Minimum 3 points.",
-                    modifier = Modifier.padding(12.dp),
-                    style = MaterialTheme.typography.bodyMedium
-                )
             }
         }
     }
