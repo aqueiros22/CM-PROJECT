@@ -1,5 +1,6 @@
 package com.example.fieldsense.ui.visits
 
+import android.R
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -120,7 +121,7 @@ fun VisitDetailScreen(
                         )
                         Text(
                             "Visit Details & Notes",
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -151,7 +152,7 @@ fun VisitDetailScreen(
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.largeTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    scrolledContainerColor = Color(0xF0E8F5E9),
                     titleContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
@@ -179,26 +180,26 @@ fun VisitDetailScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.large,
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        containerColor = Color(0xF0E8F5E9)
                     )
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Outlined.CalendarToday, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(visit.date, style = MaterialTheme.typography.bodyLarge)
+                            Text(visit.date, style = MaterialTheme.typography.bodyLarge, color = Color.Black)
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Outlined.LocationOn, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(visit.location, style = MaterialTheme.typography.bodyLarge)
+                            Text(visit.location, style = MaterialTheme.typography.bodyLarge, color = Color.Black)
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Outlined.QrCode, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(visit.code, style = MaterialTheme.typography.bodyLarge)
+                            Text(visit.code, style = MaterialTheme.typography.bodyLarge, color = Color.Black)
                         }
                     }
                 }
@@ -218,11 +219,17 @@ fun VisitDetailScreen(
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilledTonalIconButton(onClick = { imagePickerLauncher.launch("image/*") }) {
-                            Icon(Icons.Filled.Image, contentDescription = "Add Image")
+                        FilledTonalIconButton(onClick = { imagePickerLauncher.launch("image/*") },
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = Color(0xF0E8F5E9)
+                            )) {
+                            Icon(Icons.Filled.Image, contentDescription = "Add Image", tint = Color.Black)
                         }
-                        FilledTonalIconButton(onClick = { filePicker.launch("*/*") }) {
-                            Icon(Icons.Filled.AttachFile, contentDescription = "Add File")
+                        FilledTonalIconButton(onClick = { filePicker.launch("*/*") },
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = Color(0xF0E8F5E9)
+                            )) {
+                            Icon(Icons.Filled.AttachFile, contentDescription = "Add File", tint = Color.Black)
                         }
                     }
                 }
@@ -458,6 +465,7 @@ fun EditVisitDialog(
         onDismissRequest = onDismiss,
         shape = MaterialTheme.shapes.extraLarge,
         title = { Text("Edit Field Visit", fontWeight = FontWeight.Bold) },
+        containerColor = Color(0xF0E8F5E9),
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -525,6 +533,7 @@ fun AddNoteDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
         onDismissRequest = onDismiss,
         shape = MaterialTheme.shapes.extraLarge,
         title = { Text("Add New Note", fontWeight = FontWeight.Bold) },
+        containerColor = Color(0xF0E8F5E9),
         text = {
             OutlinedTextField(
                 value = content,

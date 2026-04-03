@@ -11,7 +11,7 @@ val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
 val FieldSenseGreen = Color(0xFF74E06A)
-val FieldSenseNavy = Color(0xFF00334E)
+val FieldSenseNavy = Color(0xF0E8F5E9)
 val FieldSenseDarkGreen = Color(0xFF1E824C)
 
 // Background & Surface Colors

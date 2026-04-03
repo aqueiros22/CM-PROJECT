@@ -28,10 +28,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.fieldsense.data.local.AppDatabase
 import com.example.fieldsense.data.remote.FirestoreService
@@ -258,63 +260,73 @@ fun MainScreen(
             connectivityManager.unregisterNetworkCallback(networkCallback)
         }
     }
+    val collapsedFraction = scrollBehavior.state.collapsedFraction
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
                 title = {
-                    Column {
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .padding(end = 8.dp)
-                                        .size(40.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primary),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Default.Person,
-                                        contentDescription = null,
-                                        tint = Color.White
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.weight(1f))
-
-                                IconButton(onClick = onLogout) {
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.Logout,
-                                        contentDescription = "Logout",
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                }
+                    // Usamos uma Column com alinhamento dinâmico
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        // Se quiser que ele centralize TOTALMENTE ao subir, usamos a fração
+                        horizontalAlignment = if (collapsedFraction > 0.5f) Alignment.CenterHorizontally else Alignment.Start
+                    ) {
+                        Text(
+                            "FieldSense",
+                            fontWeight = FontWeight.ExtraBold,
+                            style = MaterialTheme.typography.headlineMedium,
+                            modifier = Modifier.graphicsLayer {
+                                val scale = lerp(1f, 0.8f, collapsedFraction)
+                                scaleX = scale
+                                scaleY = scale
                             }
+                        )
+
+                        // O subtítulo desaparece conforme você faz scroll
+                        if (collapsedFraction < 0.2f) { // Sumir logo no início do scroll
                             Text(
-                                "FieldSense",
-                                fontWeight = FontWeight.ExtraBold,
-                                style = MaterialTheme.typography.headlineMedium
+                                "My Field Visits",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.graphicsLayer {
+                                    // Faz o fade out suave
+                                    alpha = 1f - (collapsedFraction * 5).coerceIn(0f, 1f)
+                                }
                             )
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            "My Field Visits",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary
+                    }
+                },
+                navigationIcon = {
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 12.dp)
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Person, contentDescription = null, tint = Color.White)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onLogout) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Logout,
+                            contentDescription = "Logout",
+                            tint = MaterialTheme.colorScheme.error
                         )
                     }
                 },
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = Color.White,
+                    scrolledContainerColor = Color(0xF0E8F5E9)
+                )
             )
         },
+
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = {
@@ -430,3 +442,4 @@ enum class Destination(
     MAP("map", "", Icons.Default.LocationOn, ""),
     DOWNLOADED_MAPS("downloaded_map", "", Icons.Default.Download, ""),
 }
+
