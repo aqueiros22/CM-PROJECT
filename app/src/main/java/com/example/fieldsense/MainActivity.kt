@@ -269,10 +269,8 @@ fun MainScreen(
         topBar = {
             LargeTopAppBar(
                 title = {
-                    // Usamos uma Column com alinhamento dinâmico
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        // Se quiser que ele centralize TOTALMENTE ao subir, usamos a fração
                         horizontalAlignment = if (collapsedFraction > 0.5f) Alignment.CenterHorizontally else Alignment.Start
                     ) {
                         Text(
@@ -285,9 +283,7 @@ fun MainScreen(
                                 scaleY = scale
                             }
                         )
-
-                        // O subtítulo desaparece conforme você faz scroll
-                        if (collapsedFraction < 0.2f) { // Sumir logo no início do scroll
+                        if (collapsedFraction < 0.2f) {
                             Text(
                                 "My Field Visits",
                                 style = MaterialTheme.typography.labelLarge,

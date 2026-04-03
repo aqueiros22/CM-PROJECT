@@ -105,7 +105,7 @@ fun VisitCard(visit: Visit, onDelete: () -> Unit, onClick: () -> Unit) {
                             imageVector = Icons.Outlined.LocationOn,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.secondary
+                            tint = Color.Black
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
@@ -121,7 +121,7 @@ fun VisitCard(visit: Visit, onDelete: () -> Unit, onClick: () -> Unit) {
                             imageVector = Icons.Outlined.CalendarToday,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.secondary
+                            tint = Color.Black
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
