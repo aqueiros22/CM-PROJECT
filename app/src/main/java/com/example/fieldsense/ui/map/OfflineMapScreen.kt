@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,11 +19,16 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material3.Button
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
@@ -115,6 +121,7 @@ fun BoundingBoxOverlay(state: BoundingBoxState) {
 
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OfflineMapScreen(onBack: () -> Unit, offlineManager: OfflineManager, viewModel: BoundingBoxViewModel = viewModel()) {
     val context = LocalContext.current
@@ -127,7 +134,122 @@ fun OfflineMapScreen(onBack: () -> Unit, offlineManager: OfflineManager, viewMod
     )
     val coroutineScope = rememberCoroutineScope()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Scaffold(
+        topBar = {
+
+            TopAppBar(
+                title = { Text("Mapas offline") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Default.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+
+            // Map (background)
+            MaplibreMap(
+                modifier = Modifier.fillMaxSize(),
+                baseStyle = BaseStyle.Uri(
+                    "https://api.maptiler.com/maps/hybrid-v4/style.json?key=${BuildConfig.MAPTILER_API_KEY}"
+                ),
+                cameraState = cameraState,
+                onMapClick = { point: Position, _ ->
+                    val latLng = LatLng(point.latitude, point.longitude)
+                    viewModel.onMapTap(latLng)
+                    ClickResult.Pass
+                }
+            ) {
+                BoundingBoxOverlay(state)
+            }
+
+            // Top hint card
+            val hint = when {
+                state.point1 == null -> "Toque para definir o primeiro canto"
+                state.point2 == null -> "Toque para definir o segundo canto"
+                else -> "Área pronta — toque no mapa para reiniciar"
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.padding(paddingValues).fillMaxHeight()
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .padding(16.dp),
+                    shape = Shapes.medium,
+                    tonalElevation = 4.dp,
+                    shadowElevation = 6.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Lightbulb,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text(
+                            text = hint,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+
+                // Bottom actions
+                if (state.isComplete) {
+                    Row(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        //horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+
+                        Button(
+                            shape = Shapes.medium,
+                            onClick = {
+                                coroutineScope.launch {
+                                    val pack = offlineManager.create(
+                                        definition = OfflinePackDefinition.TilePyramid(
+                                            styleUrl = "https://api.maptiler.com/maps/hybrid-v4/style.json?key=${BuildConfig.MAPTILER_API_KEY}",
+                                            bounds = state.toBoundingBox() ?: return@launch,
+                                            minZoom = 10,
+                                            maxZoom = 16
+                                        )
+                                    )
+                                    offlineManager.resume(pack)
+                                }
+                            }
+                        ) {
+                            Text("Download")
+                        }
+
+                        Button(
+                            shape = Shapes.medium,
+                            onClick = { viewModel.reset() }
+                        ) {
+                            Text("Reset")
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+
+/*    Box(modifier = Modifier.fillMaxSize()) {
     MaplibreMap(
         modifier = Modifier,
         baseStyle = BaseStyle.Uri("https://api.maptiler.com/maps/hybrid-v4/style.json?key=${BuildConfig.MAPTILER_API_KEY}"),
@@ -231,5 +353,5 @@ fun OfflineMapScreen(onBack: () -> Unit, offlineManager: OfflineManager, viewMod
 
     }
 
-    }
+    }*/
 }
