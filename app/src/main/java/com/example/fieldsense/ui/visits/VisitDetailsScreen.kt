@@ -277,7 +277,9 @@ fun VisitDetailScreen(
                     NoteCard(
                         note = note,
                         onDelete = { noteViewModel.deleteNote(note) },
-                        onClick = { selectedNoteId = note.id }
+                        onClick = { selectedNoteId = note.id },
+
+
                     )
                 }
             }
@@ -380,7 +382,7 @@ fun NoteCard(note: Note, onDelete: () -> Unit, onClick: () -> Unit) {
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+        colors = CardDefaults.cardColors(containerColor = Color(0xF0E8F5E9))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -393,15 +395,16 @@ fun NoteCard(note: Note, onDelete: () -> Unit, onClick: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
                 if (!note.isSynced) {
                     Icon(
                         Icons.Filled.CloudUpload,
                         contentDescription = "Pending Sync",
-                        modifier = Modifier.size(14.dp).padding(start = 4.dp),
-                        tint = MaterialTheme.colorScheme.secondary
+                        modifier = Modifier.size(20.dp).padding(start = 4.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -432,7 +435,7 @@ fun NoteCard(note: Note, onDelete: () -> Unit, onClick: () -> Unit) {
                         },
                         modifier = Modifier.size(32.dp)
                     ) {
-                        Icon(Icons.Filled.Share, contentDescription = "Share", modifier = Modifier.size(18.dp))
+                        Icon(Icons.Filled.Share, contentDescription = "Share", modifier = Modifier.size(18.dp), Color.Black   )
                     }
                     IconButton(
                         onClick = onDelete,
