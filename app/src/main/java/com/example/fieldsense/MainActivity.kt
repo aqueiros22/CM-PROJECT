@@ -154,7 +154,8 @@ fun MainScreen(
     visitViewModel: VisitViewModel,
     noteFactory: NoteViewModelFactory,
     attachmentFactory: AttachmentViewModelFactory,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onNavigateToDrawing: (Int) -> Unit = {}
 ) {
     val context = LocalContext.current
     val visits by visitViewModel.visits.collectAsState()
@@ -232,7 +233,8 @@ fun MainScreen(
             visitViewModel = visitViewModel,
             noteViewModel = noteViewModel,
             attachmentViewModel = attachmentViewModel,
-            onBack = { selectedVisitId = null }
+            onBack = { selectedVisitId = null },
+            onNavigateToDrawing = onNavigateToDrawing
         )
         return
     }

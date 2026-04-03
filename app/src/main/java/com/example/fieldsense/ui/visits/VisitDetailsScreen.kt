@@ -1,6 +1,5 @@
 package com.example.fieldsense.ui.visits
 
-import android.R
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -29,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.fieldsense.BuildConfig
 import com.example.fieldsense.data.model.Attachment
 import com.example.fieldsense.data.model.Note
 import com.example.fieldsense.data.model.Visit
@@ -36,7 +36,23 @@ import com.example.fieldsense.ui.attachments.AttachmentDetailScreen
 import com.example.fieldsense.ui.attachments.AttachmentViewModel
 import com.example.fieldsense.ui.notes.NoteDetailScreen
 import com.example.fieldsense.ui.notes.NoteViewModel
-import java.util.Locale
+import kotlinx.serialization.json.JsonObject
+import org.maplibre.compose.camera.CameraPosition
+import org.maplibre.compose.camera.rememberCameraState
+import org.maplibre.compose.expressions.dsl.const
+import org.maplibre.compose.layers.CircleLayer
+import org.maplibre.compose.layers.FillLayer
+import org.maplibre.compose.layers.LineLayer
+import org.maplibre.compose.map.MaplibreMap
+import org.maplibre.compose.sources.GeoJsonData
+import org.maplibre.compose.sources.rememberGeoJsonSource
+import org.maplibre.compose.style.BaseStyle
+import org.maplibre.compose.util.ClickResult
+import org.maplibre.spatialk.geojson.Feature
+import org.maplibre.spatialk.geojson.FeatureCollection
+import org.maplibre.spatialk.geojson.Point
+import org.maplibre.spatialk.geojson.Position
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +61,8 @@ fun VisitDetailScreen(
     visitViewModel: VisitViewModel,
     noteViewModel: NoteViewModel,
     attachmentViewModel: AttachmentViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onNavigateToDrawing: (Int) -> Unit = {}
 ) {
     val context = LocalContext.current
     val notes by noteViewModel.getNotesForVisit(visit.id).collectAsState()
@@ -205,6 +222,11 @@ fun VisitDetailScreen(
                 }
             }
 
+            // Map Section
+            item {
+                VisitAreaMapSection(visit = visit, onEditArea = { onNavigateToDrawing(visit.id) })
+            }
+
             // Attachments Section
             item {
                 Row(
@@ -304,6 +326,149 @@ fun VisitDetailScreen(
                     showEditVisitDialog = false
                 }
             )
+        }
+    }
+}
+
+@Composable
+fun VisitAreaMapSection(visit: Visit, onEditArea: () -> Unit) {
+    val context = LocalContext.current
+    val points = remember(visit.area) {
+        val list = mutableListOf<Position>()
+        visit.area?.let { areaStr ->
+            areaStr.split(";").forEach { pair ->
+                val coords = pair.split(",")
+                if (coords.size == 2) {
+                    try {
+                        list.add(Position(coords[1].toDouble(), coords[0].toDouble()))
+                    } catch (e: Exception) {
+                        // ignore
+                    }
+                }
+            }
+        }
+        list
+    }
+
+    // Extract center from visit.location
+    val center = remember(visit.location) {
+        try {
+            val cleanText = visit.location.replace(" (Last known)", "").trim()
+            val parts = cleanText.split(",")
+            if (parts.size == 2) {
+                Position(parts[1].trim().toDouble(), parts[0].trim().toDouble())
+            } else {
+                Position(-9.1399, 38.7169)
+            }
+        } catch (e: Exception) {
+            Position(-9.1399, 38.7169)
+        }
+    }
+
+    val cameraState = rememberCameraState(
+        firstPosition = CameraPosition(
+            target = center,
+            zoom = 15.0
+        )
+    )
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Visit Area",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            TextButton(onClick = onEditArea) {
+                Text(if (points.isEmpty()) "Define Area" else "Edit Area")
+            }
+        }
+        
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            shape = MaterialTheme.shapes.medium,
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                MaplibreMap(
+                    modifier = Modifier.fillMaxSize(),
+                    baseStyle = BaseStyle.Uri("https://api.maptiler.com/maps/hybrid-v4/style.json?key=${BuildConfig.MAPTILER_API_KEY}"),
+                    cameraState = cameraState,
+                    onMapClick = { _, _ -> ClickResult.Consume }
+                ) {
+                    // Visit location marker
+                    val centerSource = rememberGeoJsonSource(
+                        data = GeoJsonData.Features(
+                            FeatureCollection(
+                                Feature(
+                                    geometry = Point(center),
+                                    properties = JsonObject(content = emptyMap())
+                                )
+                            )
+                        )
+                    )
+                    CircleLayer(
+                        id = "visit-location-marker",
+                        source = centerSource,
+                        radius = const(6.dp),
+                        color = const(MaterialTheme.colorScheme.primary)
+                    )
+
+                    // Polygon preview
+                    if (points.size >= 2) {
+                        val geoJson = buildString {
+                            append("""{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[""")
+                            points.forEachIndexed { index, pos ->
+                                if (index > 0) append(",")
+                                append("[${pos.longitude}, ${pos.latitude}]")
+                            }
+                            append(",[${points.first().longitude}, ${points.first().latitude}]")
+                            append("""]]}}""")
+                        }
+
+                        val polygonSource = rememberGeoJsonSource(data = GeoJsonData.JsonString(geoJson))
+
+                        FillLayer(
+                            id = "area-fill-preview",
+                            source = polygonSource,
+                            color = const(Color(0xFF4CAF50)),
+                            opacity = const(0.3f)
+                        )
+                        LineLayer(
+                            id = "area-outline-preview",
+                            source = polygonSource,
+                            color = const(Color(0xFF4CAF50)),
+                            width = const(2.dp)
+                        )
+                    }
+                }
+                
+                if (points.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.5f),
+                            shape = CircleShape
+                        ) {
+                            Text(
+                                "No area defined",
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

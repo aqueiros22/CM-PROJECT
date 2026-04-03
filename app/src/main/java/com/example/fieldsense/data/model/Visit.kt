@@ -12,5 +12,6 @@ data class Visit(
     val name: String = "",
     val date: String = "",
     val location: String = "",
+    val area: String? = null,
     val isSynced: Boolean = false
 )

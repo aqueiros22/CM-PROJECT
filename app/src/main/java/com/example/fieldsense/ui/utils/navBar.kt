@@ -9,8 +9,8 @@ import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.indicatorColor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -29,6 +29,7 @@ import com.example.fieldsense.ui.map.LocationViewModel
 import com.example.fieldsense.ui.map.MapScreen
 import com.example.fieldsense.ui.map.OfflineMapScreen
 import com.example.fieldsense.ui.notes.NoteViewModelFactory
+import com.example.fieldsense.ui.visits.VisitAreaDrawingScreen
 import com.example.fieldsense.ui.visits.VisitViewModel
 import org.maplibre.compose.offline.OfflineManager
 import org.maplibre.compose.offline.rememberOfflineManager
@@ -59,13 +60,32 @@ fun AppNavHost(
                         visitViewModel = visitViewModel,
                         onLogout = onLogout,
                         noteFactory =  noteFactory,
-                        attachmentFactory = attachmentFactory)
+                        attachmentFactory = attachmentFactory,
+                        onNavigateToDrawing = { visitId ->
+                            navController.navigate("draw_area/$visitId")
+                        })
                     Destination.MAP -> MapScreen(Modifier, locationViewModel, onNavigateToOfflineMap = {navController.navigate("offline_map")})
                     Destination.DOWNLOADED_MAPS -> DownloadedMapsScreen(offlineManager)
                 }
             }
         }
         composable("offline_map") { OfflineMapScreen(offlineManager) }
+        composable("draw_area/{visitId}") { backStackEntry ->
+            val visitId = backStackEntry.arguments?.getString("visitId")?.toIntOrNull()
+            val visits by visitViewModel.visits.collectAsState()
+            val visit = visits.find { it.id == visitId }
+            
+            if (visit != null) {
+                VisitAreaDrawingScreen(
+                    visit = visit,
+                    onSave = { areaStr ->
+                        visitViewModel.updateVisit(visit.copy(area = areaStr))
+                        navController.popBackStack()
+                    },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+        }
     }
 }
 
