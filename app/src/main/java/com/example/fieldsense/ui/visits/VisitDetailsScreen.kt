@@ -36,6 +36,7 @@ import com.example.fieldsense.ui.attachments.AttachmentDetailScreen
 import com.example.fieldsense.ui.attachments.AttachmentViewModel
 import com.example.fieldsense.ui.notes.NoteDetailScreen
 import com.example.fieldsense.ui.notes.NoteViewModel
+import com.example.fieldsense.ui.utils.DeleteConfirmationDialog
 import kotlinx.serialization.json.JsonObject
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
@@ -52,7 +53,7 @@ import org.maplibre.spatialk.geojson.Feature
 import org.maplibre.spatialk.geojson.FeatureCollection
 import org.maplibre.spatialk.geojson.Point
 import org.maplibre.spatialk.geojson.Position
-
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -475,6 +476,20 @@ fun VisitAreaMapSection(visit: Visit, onEditArea: () -> Unit) {
 
 @Composable
 fun AttachmentCard(attachment: Attachment, onDelete: () -> Unit, onClick: () -> Unit) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        DeleteConfirmationDialog(
+            title = "Delete Attachment",
+            message = "Are you sure you want to delete this attachment?",
+            onConfirm = {
+                onDelete()
+                showDeleteDialog = false
+            },
+            onDismiss = { showDeleteDialog = false }
+        )
+    }
+
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -527,7 +542,7 @@ fun AttachmentCard(attachment: Attachment, onDelete: () -> Unit, onClick: () -> 
             }
 
             IconButton(
-                onClick = onDelete,
+                onClick = { showDeleteDialog = true },
                 colors = IconButtonDefaults.filledTonalIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
                     contentColor = MaterialTheme.colorScheme.onErrorContainer
@@ -543,6 +558,20 @@ fun AttachmentCard(attachment: Attachment, onDelete: () -> Unit, onClick: () -> 
 @Composable
 fun NoteCard(note: Note, onDelete: () -> Unit, onClick: () -> Unit) {
     val context = LocalContext.current
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        DeleteConfirmationDialog(
+            title = "Delete Note",
+            message = "Are you sure you want to delete this note?",
+            onConfirm = {
+                onDelete()
+                showDeleteDialog = false
+            },
+            onDismiss = { showDeleteDialog = false }
+        )
+    }
+
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -603,7 +632,7 @@ fun NoteCard(note: Note, onDelete: () -> Unit, onClick: () -> Unit) {
                         Icon(Icons.Filled.Share, contentDescription = "Share", modifier = Modifier.size(18.dp), Color.Black   )
                     }
                     IconButton(
-                        onClick = onDelete,
+                        onClick = { showDeleteDialog = true },
                         colors = IconButtonDefaults.filledTonalIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
                             contentColor = MaterialTheme.colorScheme.onErrorContainer

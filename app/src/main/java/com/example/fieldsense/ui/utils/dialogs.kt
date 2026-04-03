@@ -21,6 +21,20 @@ import java.util.Locale
 
 @Composable
 fun VisitCard(visit: Visit, onDelete: () -> Unit, onClick: () -> Unit) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        DeleteConfirmationDialog(
+            title = "Delete Visit",
+            message = "Are you sure you want to delete this visit? This action cannot be undone.",
+            onConfirm = {
+                onDelete()
+                showDeleteDialog = false
+            },
+            onDismiss = { showDeleteDialog = false }
+        )
+    }
+
     Card(
         onClick = onClick,
         modifier = Modifier
@@ -133,7 +147,7 @@ fun VisitCard(visit: Visit, onDelete: () -> Unit, onClick: () -> Unit) {
                 }
 
                 IconButton(
-                    onClick = onDelete,
+                    onClick = { showDeleteDialog = true },
                     colors = IconButtonDefaults.filledTonalIconButtonColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer,
                         contentColor = MaterialTheme.colorScheme.onErrorContainer
@@ -223,6 +237,36 @@ fun AddVisitDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun DeleteConfirmationDialog(
+    title: String,
+    message: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title, fontWeight = FontWeight.Bold) },
+        text = { Text(message) },
+        containerColor = Color(0xF0E8F5E9),
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Delete")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
+            ) {
                 Text("Cancel")
             }
         }
