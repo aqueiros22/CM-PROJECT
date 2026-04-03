@@ -26,53 +26,46 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import com.cloudinary.android.MediaManager
 import com.example.fieldsense.data.local.AppDatabase
-import com.example.fieldsense.data.model.Visit
-import com.example.fieldsense.data.remote.CloudinaryService
 import com.example.fieldsense.data.remote.FirestoreService
-import com.example.fieldsense.data.repository.AttachmentRepository
-import com.example.fieldsense.data.repository.AuthRepository
 import com.example.fieldsense.data.repository.NoteRepository
 import com.example.fieldsense.data.repository.VisitRepository
 import com.example.fieldsense.location.getAddressFromLocation
 import com.example.fieldsense.ui.attachments.AttachmentViewModel
 import com.example.fieldsense.ui.attachments.AttachmentViewModelFactory
+import androidx.compose.ui.Modifier
+import androidx.core.app.ActivityCompat
+import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.cloudinary.android.MediaManager
+import com.example.fieldsense.data.remote.CloudinaryService
+import com.example.fieldsense.data.repository.AttachmentRepository
+import com.example.fieldsense.data.repository.AuthRepository
+import com.example.fieldsense.ui.visits.VisitDetailScreen
 import com.example.fieldsense.ui.auth.AuthState
 import com.example.fieldsense.ui.auth.AuthViewModel
 import com.example.fieldsense.ui.auth.AuthViewModelFactory
 import com.example.fieldsense.ui.auth.AuthenticationScreen
 import com.example.fieldsense.ui.map.LocationViewModel
-import com.example.fieldsense.ui.map.MapScreen
-import com.example.fieldsense.ui.map.OfflineMapScreen
 import com.example.fieldsense.ui.notes.NoteViewModel
 import com.example.fieldsense.ui.notes.NoteViewModelFactory
 import com.example.fieldsense.ui.theme.FieldSenseTheme
 import com.example.fieldsense.ui.utils.AddVisitDialog
 import com.example.fieldsense.ui.utils.NavigationBar
 import com.example.fieldsense.ui.utils.VisitCard
-import com.example.fieldsense.ui.visits.VisitDetailScreen
 import com.example.fieldsense.ui.visits.VisitViewModel
 import com.example.fieldsense.ui.visits.VisitViewModelFactory
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -182,6 +175,7 @@ fun MainScreen(
 
     var fetchedLocation by rememberSaveable { mutableStateOf("") }
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+
     val coroutineScope = rememberCoroutineScope()
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -197,7 +191,9 @@ fun MainScreen(
                 fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
                     .addOnSuccessListener { location ->
                         if (location != null) {
+                            fetchedLocation = "${location.latitude}, ${location.longitude}"
                             coroutineScope.launch {
+                                fetchedLocation = "Finding address..."
                                 showAddDialog = true
                                 fetchedLocation = "Finding address..."
                                 fetchedLocation = getAddressFromLocation(
@@ -220,9 +216,10 @@ fun MainScreen(
         }
     }
 
+    // Se tiver visita selecionada, mostra o ecrã de detalhe
     val noteViewModel: NoteViewModel = viewModel(factory = noteFactory)
     val attachmentViewModel: AttachmentViewModel = viewModel(factory = attachmentFactory)
-    
+
     LaunchedEffect(userId) {
         noteViewModel.setUserId(userId)
     }
@@ -237,7 +234,7 @@ fun MainScreen(
         )
         return
     }
-    
+
     LaunchedEffect(Unit) {
         visitViewModel.syncPendingVisits()
     }
@@ -323,6 +320,7 @@ fun MainScreen(
                 onClick = {
                     fetchedLocation = "Fetching location..."
                     showAddDialog = true
+                    // pedir permissão de loc
                     locationPermissionLauncher.launch(
                         arrayOf(
                             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -409,7 +407,7 @@ fun MainScreen(
 
         if (showAddDialog) {
             AddVisitDialog(
-                initialLocation = fetchedLocation,
+                initialLocation = fetchedLocation, // Passamos a localização para o Diálogo!
                 onDismiss = { showAddDialog = false },
                 onConfirm = { code, name, loc ->
                     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -428,45 +426,7 @@ enum class Destination(
     val icon: ImageVector,
     val contentDescription: String
 ) {
-    MAIN("home", "Visits", Icons.Default.Home, "Field Visits"),
-    MAP("map", "Map", Icons.Default.LocationOn, "Field Map"),
-}
-
-@Composable
-fun AppNavHost(
-    navController: NavHostController,
-    startDestination: Destination,
-    userId: String,
-    email: String,
-    visitViewModel: VisitViewModel,
-    locationViewModel: LocationViewModel,
-    onLogout: () -> Unit,
-    noteFactory: NoteViewModelFactory,
-    attachmentFactory: AttachmentViewModelFactory
-) {
-    NavHost(
-        navController,
-        startDestination = startDestination.route
-    ) {
-        Destination.entries.forEach { destination ->
-            composable(destination.route) {
-                when (destination) {
-                    Destination.MAIN -> MainScreen(
-                        userId = userId,
-                        email = email,
-                        visitViewModel = visitViewModel,
-                        onLogout = onLogout,
-                        noteFactory = noteFactory,
-                        attachmentFactory = attachmentFactory
-                    )
-                    Destination.MAP -> MapScreen(
-                        Modifier,
-                        locationViewModel,
-                        onNavigateToOfflineMap = { navController.navigate("offline_map") }
-                    )
-                }
-            }
-        }
-        composable("offline_map") { OfflineMapScreen() }
-    }
+    MAIN("home", "", Icons.Default.Home, ""),
+    MAP("map", "", Icons.Default.LocationOn, ""),
+    DOWNLOADED_MAPS("downloaded_map", "", Icons.Default.Download, ""),
 }

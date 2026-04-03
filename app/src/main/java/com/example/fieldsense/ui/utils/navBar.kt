@@ -20,11 +20,14 @@ import androidx.navigation.compose.rememberNavController
 import com.example.fieldsense.Destination
 import com.example.fieldsense.MainScreen
 import com.example.fieldsense.ui.attachments.AttachmentViewModelFactory
+import com.example.fieldsense.ui.map.DownloadedMapsScreen
 import com.example.fieldsense.ui.map.LocationViewModel
 import com.example.fieldsense.ui.map.MapScreen
 import com.example.fieldsense.ui.map.OfflineMapScreen
 import com.example.fieldsense.ui.notes.NoteViewModelFactory
 import com.example.fieldsense.ui.visits.VisitViewModel
+import org.maplibre.compose.offline.OfflineManager
+import org.maplibre.compose.offline.rememberOfflineManager
 
 @Composable
 fun AppNavHost(
@@ -34,6 +37,7 @@ fun AppNavHost(
     email: String,
     visitViewModel: VisitViewModel,
     locationViewModel: LocationViewModel,
+    offlineManager: OfflineManager,
     onLogout: () -> Unit,
     noteFactory: NoteViewModelFactory,
     attachmentFactory: AttachmentViewModelFactory
@@ -53,10 +57,11 @@ fun AppNavHost(
                         noteFactory =  noteFactory,
                         attachmentFactory = attachmentFactory)
                     Destination.MAP -> MapScreen(Modifier, locationViewModel, onNavigateToOfflineMap = {navController.navigate("offline_map")})
+                    Destination.DOWNLOADED_MAPS -> DownloadedMapsScreen(offlineManager)
                 }
             }
         }
-        composable("offline_map") { OfflineMapScreen() }
+        composable("offline_map") { OfflineMapScreen(offlineManager) }
     }
 }
 
@@ -71,6 +76,7 @@ fun NavigationBar(
     noteFactory: NoteViewModelFactory,
     attachmentFactory: AttachmentViewModelFactory
 ) {
+    val offlineManager = rememberOfflineManager()
     val navController = rememberNavController()
     val startDestination = Destination.MAIN
     var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }
@@ -108,6 +114,7 @@ fun NavigationBar(
                 email,
                 visitViewModel,
                 locationViewModel,
+                offlineManager,
                 onLogout,
                 noteFactory,
                 attachmentFactory

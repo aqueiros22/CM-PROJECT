@@ -46,7 +46,7 @@ data class BoundingBoxState(
 class BoundingBoxViewModel : ViewModel() {
     var state by mutableStateOf(BoundingBoxState())
         private set
-
+    var previewLocation by mutableStateOf<Position?>(null)
     fun onMapTap(latLng: LatLng) {
         state = when {
             state.point1 == null -> state.copy(point1 = latLng)
