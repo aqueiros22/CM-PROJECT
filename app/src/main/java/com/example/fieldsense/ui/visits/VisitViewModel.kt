@@ -30,6 +30,19 @@ class VisitViewModel(private val repository: VisitRepository) : ViewModel() {
         emptyList()
     )
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val archivedVisits = _userId.flatMapLatest { uid ->
+        if (uid == null) {
+            flowOf(emptyList<Visit>())
+        } else {
+            repository.getArchivedVisits(uid)
+        }
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        emptyList()
+    )
+
     fun setUserId(userId: String) {
         _userId.value = userId
     }
@@ -45,6 +58,18 @@ class VisitViewModel(private val repository: VisitRepository) : ViewModel() {
     fun updateVisit(visit: Visit) {
         viewModelScope.launch {
             repository.update(visit)
+        }
+    }
+
+    fun archiveVisit(visit: Visit) {
+        viewModelScope.launch {
+            repository.update(visit.copy(isArchived = true, isSynced = false))
+        }
+    }
+
+    fun unarchiveVisit(visit: Visit) {
+        viewModelScope.launch {
+            repository.update(visit.copy(isArchived = false, isSynced = false))
         }
     }
 

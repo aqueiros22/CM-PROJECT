@@ -71,9 +71,12 @@ fun AppNavHost(
         }
         composable("offline_map") { OfflineMapScreen(offlineManager) }
         composable("draw_area/{visitId}") { backStackEntry ->
-            val visitId = backStackEntry.arguments?.getString("visitId")?.toIntOrNull()
+            val visitIdStr = backStackEntry.arguments?.getString("visitId")
+            val visitId = visitIdStr?.toIntOrNull()
             val visits by visitViewModel.visits.collectAsState()
-            val visit = visits.find { it.id == visitId }
+            val archivedVisits by visitViewModel.archivedVisits.collectAsState()
+            
+            val visit = visits.find { it.id == visitId } ?: archivedVisits.find { it.id == visitId }
             
             if (visit != null) {
                 VisitAreaDrawingScreen(

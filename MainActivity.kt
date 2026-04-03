@@ -159,10 +159,9 @@ fun MainScreen(
 ) {
     val context = LocalContext.current
     
-    // State to toggle between Active and Archived visits
     var showArchived by rememberSaveable { mutableStateOf(false) }
-    
     val visits by (if (showArchived) visitViewModel.archivedVisits else visitViewModel.visits).collectAsState()
+    
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var selectedVisitId by rememberSaveable { mutableStateOf<Int?>(null) }
     val selectedVisit = visits.find { it.id == selectedVisitId }
@@ -278,7 +277,7 @@ fun MainScreen(
                         horizontalAlignment = if (collapsedFraction > 0.5f) Alignment.CenterHorizontally else Alignment.Start
                     ) {
                         Text(
-                            "FieldSense",
+                            if (showArchived) "Archived Visits" else "FieldSense",
                             fontWeight = FontWeight.ExtraBold,
                             style = MaterialTheme.typography.headlineMedium,
                             modifier = Modifier.graphicsLayer {
@@ -290,7 +289,7 @@ fun MainScreen(
 
                         if (collapsedFraction < 0.2f) { 
                             Text(
-                                if (showArchived) "Visitas Arquivadas" else "Minhas Visitas",
+                                if (showArchived) "Managed archived records" else "My Field Visits",
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.graphicsLayer {
@@ -344,7 +343,7 @@ fun MainScreen(
                     },
                     expanded = isFabExtended,
                     icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                    text = { Text("Nova Visita") },
+                    text = { Text("New Visit") },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 )
@@ -360,7 +359,7 @@ fun MainScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Pesquisar por nome ou código...") },
+                placeholder = { Text("Search by name or code...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
@@ -377,7 +376,7 @@ fun MainScreen(
                 )
             )
 
-            // Section for switching between Active and Archived
+            // Tabs for Active/Archived
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -387,30 +386,20 @@ fun MainScreen(
                 FilterChip(
                     selected = !showArchived,
                     onClick = { showArchived = false },
-                    label = { Text("Ativas") },
+                    label = { Text("Active") },
                     leadingIcon = if (!showArchived) {
                         { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                    } else null,
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Color(0xFF74E06A),
-                        selectedLabelColor = Color.White,
-                        selectedLeadingIconColor = Color.White
-                    )
+                    } else null
                 )
                 FilterChip(
                     selected = showArchived,
                     onClick = { showArchived = true },
-                    label = { Text("Arquivadas") },
+                    label = { Text("Archived") },
                     leadingIcon = if (showArchived) {
                         { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
                     } else {
                         { Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                    },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Color.Black,
-                    selectedLabelColor = Color.White,
-                    selectedLeadingIconColor = Color.White
-                )
+                    }
                 )
             }
 
@@ -431,8 +420,8 @@ fun MainScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             if (searchQuery.isEmpty()) {
-                                if (showArchived) "Sem visitas arquivadas." else "Nenhuma visita registada."
-                            } else "Nenhum resultado encontrado.",
+                                if (showArchived) "No archived visits." else "No visits recorded yet."
+                            } else "No matches found.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.titleMedium
                         )
@@ -461,7 +450,7 @@ fun MainScreen(
 
         if (showAddDialog) {
             AddVisitDialog(
-                initialLocation = fetchedLocation, // Passamos a localização para o Diálogo!
+                initialLocation = fetchedLocation,
                 onDismiss = { showAddDialog = false },
                 onConfirm = { code, name, loc ->
                     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())

@@ -13,5 +13,6 @@ data class Visit(
     val date: String = "",
     val location: String = "",
     val area: String? = null,
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+    val isArchived: Boolean = false
 )

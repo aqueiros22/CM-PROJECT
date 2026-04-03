@@ -20,18 +20,43 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun VisitCard(visit: Visit, onDelete: () -> Unit, onClick: () -> Unit) {
+fun VisitCard(
+    visit: Visit,
+    onDelete: () -> Unit,
+    onArchive: () -> Unit,
+    onRestore: () -> Unit = {},
+    onClick: () -> Unit,
+    isArchivedMode: Boolean = false
+) {
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showArchiveDialog by remember { mutableStateOf(false) }
 
     if (showDeleteDialog) {
         DeleteConfirmationDialog(
-            title = "Delete Visit",
-            message = "Are you sure you want to delete this visit? This action cannot be undone.",
+            title = "Delete Permanently",
+            message = "Are you sure you want to delete \"${visit.name}\"? This action cannot be undone.",
             onConfirm = {
                 onDelete()
                 showDeleteDialog = false
             },
             onDismiss = { showDeleteDialog = false }
+        )
+    }
+
+    if (showArchiveDialog) {
+        AlertDialog(
+            onDismissRequest = { showArchiveDialog = false },
+            title = { Text("Archive Visit") },
+            text = { Text("Are you sure you want to archive this visit? It will be moved to the Archived section.") },
+            confirmButton = {
+                Button(onClick = {
+                    onArchive()
+                    showArchiveDialog = false
+                }) { Text("Archive") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showArchiveDialog = false }) { Text("Cancel") }
+            }
         )
     }
 
@@ -42,7 +67,7 @@ fun VisitCard(visit: Visit, onDelete: () -> Unit, onClick: () -> Unit) {
             .padding(horizontal = 4.dp),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xA0E8F5E9)
+            containerColor = if (isArchivedMode) Color(0xFFF5F5F5) else Color(0xA0E8F5E9)
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -57,7 +82,7 @@ fun VisitCard(visit: Visit, onDelete: () -> Unit, onClick: () -> Unit) {
                         text = visit.name,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = if (isArchivedMode) Color.Gray else MaterialTheme.colorScheme.onSurface
                     )
                     
                     Spacer(modifier = Modifier.height(8.dp))
@@ -67,7 +92,7 @@ fun VisitCard(visit: Visit, onDelete: () -> Unit, onClick: () -> Unit) {
                             imageVector = Icons.Outlined.QrCode,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = if (isArchivedMode) Color.Gray else MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
@@ -78,27 +103,42 @@ fun VisitCard(visit: Visit, onDelete: () -> Unit, onClick: () -> Unit) {
                     }
                 }
 
-                Surface(
-                    shape = MaterialTheme.shapes.small,
-                    color = if (visit.isSynced) Color(0xFF74E06A) else MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.padding(start = 8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                if (!isArchivedMode) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = if (visit.isSynced) Color(0xFF74E06A) else MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.padding(start = 8.dp)
                     ) {
-                        Icon(
-                            imageVector = if (visit.isSynced) Icons.Filled.Check else Icons.Filled.CloudUpload,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = if (visit.isSynced) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (visit.isSynced) Icons.Filled.Check else Icons.Filled.CloudUpload,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = if (visit.isSynced) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (visit.isSynced) "Synced" else "Pending",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (visit.isSynced) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = Color.LightGray,
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
                         Text(
-                            text = if (visit.isSynced) "Synced" else "Pending",
+                            text = "Archived",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (visit.isSynced) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -146,15 +186,43 @@ fun VisitCard(visit: Visit, onDelete: () -> Unit, onClick: () -> Unit) {
                     }
                 }
 
-                IconButton(
-                    onClick = { showDeleteDialog = true },
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    ),
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(Icons.Filled.Delete, contentDescription = "Delete", modifier = Modifier.size(18.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (isArchivedMode) {
+                        // In Archived mode: can Restore or Delete Permanently
+                        IconButton(
+                            onClick = onRestore,
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = Color.LightGray,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(Icons.Filled.Unarchive, contentDescription = "Restore", modifier = Modifier.size(18.dp))
+                        }
+
+                        IconButton(
+                            onClick = { showDeleteDialog = true },
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                            ),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Delete", modifier = Modifier.size(18.dp))
+                        }
+                    } else {
+                        // In Active mode: ONLY can Archive. Delete is not allowed until archived.
+                        IconButton(
+                            onClick = { showArchiveDialog = true },
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = Color.LightGray,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            ),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(Icons.Filled.Archive, contentDescription = "Archive", modifier = Modifier.size(18.dp))
+                        }
+                    }
                 }
             }
         }
@@ -264,9 +332,7 @@ fun DeleteConfirmationDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
-            ) {
+            TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
         }
