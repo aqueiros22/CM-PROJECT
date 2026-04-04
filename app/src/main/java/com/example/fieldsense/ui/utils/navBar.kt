@@ -85,9 +85,8 @@ fun AppNavHost(
                         visitViewModel.updateVisit(visit.copy(area = areaStr))
                         navController.popBackStack()
                     },
-                    onMapAttach = {mapName ->
-                        visitViewModel.updateVisit(visit.copy(map = mapName))
-                        navController.popBackStack()
+                    onMapAttach = {mapId ->
+                        visitViewModel.updateVisit(visit.copy(map = mapId))
                     },
                     onBack = { navController.popBackStack() },
                     offlineManager = offlineManager

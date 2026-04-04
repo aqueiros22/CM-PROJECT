@@ -296,6 +296,15 @@ fun OfflineMapScreen(
                                                 maxZoom = 16
                                             )
                                         )
+                                        val uniqueId = java.util.UUID.randomUUID().toString()
+                                        val metadataJson = org.json.JSONObject().apply {
+                                            put("id", uniqueId)
+                                            put("name", "Mapa ${uniqueId.take(5)}") // Default name using part of ID
+                                        }
+
+                                        // Set metadata for the pack
+                                        pack.setMetadata(metadataJson.toString().toByteArray(Charsets.UTF_8))
+
                                         offlineManager.resume(pack)
                                         Toast.makeText(
                                             context,

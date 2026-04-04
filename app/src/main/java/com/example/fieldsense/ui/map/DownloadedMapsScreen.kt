@@ -104,10 +104,19 @@ fun DownloadedMapsScreen(
     }
     // Delete confirmation dialog
     packToDelete?.let { pack ->
+        val mapName = remember(pack) {
+            try {
+                val jsonString = pack.metadata?.decodeToString()
+                JSONObject(jsonString ?: "").optString("name", "Desconhecido")
+            } catch (e: Exception) {
+                "Desconhecido"
+            }
+        }
+
         AlertDialog(
             onDismissRequest = { packToDelete = null },
             title = { Text("Apagar mapa") },
-            text = { Text("Deseja apagar o mapa \"${pack.metadata?.decodeToString()}\"?") },
+            text = { Text("Deseja apagar o mapa \"$mapName\"?") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -206,11 +215,22 @@ fun DownloadedMapsScreen(
                                 } else {
                                     Log.d("UpdateMetadata", "Nome único confirmado: $newName")
                                     coroutineScope.launch {
-                                        val json = """{ "name": "$newName" }"""
-                                        val bytes = json.toByteArray(Charsets.UTF_8)
-                                        Log.d("UpdateMetadata", "bytes: $bytes")
-                                        selectedPack.setMetadata(bytes)
+                                        try {
+                                            val existingMetaString = selectedPack.metadata?.decodeToString() ?: "{}"
+                                            val jsonObject = JSONObject(existingMetaString)
 
+                                            jsonObject.put("name", newName)
+
+                                            val updatedJsonString = jsonObject.toString()
+                                            val bytes = updatedJsonString.toByteArray(Charsets.UTF_8)
+
+                                            Log.d("UpdateMetadata", "Novo JSON preservando ID: ${bytes.decodeToString()}")
+
+                                            // 5. Save the merged metadata
+                                            selectedPack.setMetadata(bytes)
+                                        } catch (e: Exception) {
+                                            Log.e("UpdateMetadata", "Erro ao atualizar metadata", e)
+                                        }
                                     }
                                 }
                             }

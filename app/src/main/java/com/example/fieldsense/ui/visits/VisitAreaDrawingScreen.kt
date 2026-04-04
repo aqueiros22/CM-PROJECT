@@ -50,46 +50,49 @@ fun VisitAreaDrawingScreen(
 ) {
     val context = LocalContext.current
     val points = remember { mutableStateListOf<Position>() }
-    val hasMap: Boolean = visit.map != null
 
 
+    val mapPackId = visit.map
 
-    if (!hasMap ) {
-        MapsChoiceScreen(
-            packNotFound = false,
-            onBack = onBack,
-            onMapAttach = onMapAttach,
-            offlineManager = offlineManager
-        )
-        return@VisitAreaDrawingScreen
-    }
-
-    val mapPackName = visit.map
-
-    val pack = offlineManager.packs.find { pack ->
-        try {
-            val json = pack.metadata?.decodeToString() ?: ""
-            org.json.JSONObject(json).optString("name", "") == mapPackName
-        } catch (e: Exception) {
-            false
+    val pack = remember(offlineManager.packs, mapPackId) {
+        offlineManager.packs.find { pack ->
+            try {
+                val json = pack.metadata?.decodeToString() ?: ""
+                org.json.JSONObject(json).optString("id", "") == mapPackId
+            } catch (e: Exception) {
+                false
+            }
         }
     }
 
-    if (pack == null ) {
-        MapsChoiceScreen(
-            packNotFound = true,
-            onBack = onBack,
-            onMapAttach = onMapAttach,
-            offlineManager = offlineManager
-        )
-        return@VisitAreaDrawingScreen
+    when {
+        //  No map is attached to the visit
+        mapPackId == null -> {
+            MapsChoiceScreen(
+                packNotFound = false,
+                onBack = onBack,
+                onMapAttach = onMapAttach,
+                offlineManager = offlineManager
+            )
+            return
+        }
+
+        // A map was attached, but the pack is not found locally
+        pack == null -> {
+            MapsChoiceScreen(
+                packNotFound = true,
+                onBack = onBack,
+                onMapAttach = onMapAttach,
+                offlineManager = offlineManager
+            )
+            return
+        }
     }
 
     var centerLat by rememberSaveable { mutableStateOf<Double?>(-9.1399) }
     var centerLng by rememberSaveable { mutableStateOf<Double?>(38.7169) }
 
-    val getMapCenter = { mapName: String ->
-
+    val getMapCenter = {
         pack?.let { pack ->
             val definition = pack.definition
             if (definition is OfflinePackDefinition.TilePyramid) {
@@ -100,9 +103,9 @@ fun VisitAreaDrawingScreen(
             }}
     }
 
-    LaunchedEffect( mapPackName) {
-        if (mapPackName != null) {
-            getMapCenter(mapPackName)
+    LaunchedEffect( pack) {
+        if (mapPackId != null) {
+            getMapCenter()
         }
     }
 
