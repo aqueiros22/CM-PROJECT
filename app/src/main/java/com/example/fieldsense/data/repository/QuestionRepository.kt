@@ -13,6 +13,9 @@ class QuestionRepository (
     fun getQuestionsForTemplate(templateId: Int): Flow<List<Question>> =
         questionDao.getQuestionsForTemplate(templateId)
 
+    suspend fun getQuestionsForTemplateOnce(templateId: Int): List<Question> =
+        questionDao.getQuestionsForTemplateOnce(templateId)
+
     suspend fun insertQuestion(question: Question) {
         questionDao.insertQuestion(question)
     }

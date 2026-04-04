@@ -1,10 +1,12 @@
 package com.example.fieldsense.data.remote
 
+import com.example.fieldsense.data.model.Answer
 import com.example.fieldsense.data.model.Note
 import com.example.fieldsense.data.model.Visit
 import com.example.fieldsense.data.model.Attachment
 import com.example.fieldsense.data.model.Question
 import com.example.fieldsense.data.model.Template
+import com.example.fieldsense.data.model.VisitChecklist
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
@@ -89,5 +91,26 @@ class FirestoreService {
                 .set(question)
                 .await()
         }
+    }
+    private fun getChecklistsCollection(visitId: Int) =
+        getUserVisitsCollection()?.document(visitId.toString())?.collection("checklists")
+
+    suspend fun uploadChecklistWithAnswers(checklist: VisitChecklist, answers: List<Answer>) {
+        val checklistRef = getChecklistsCollection(checklist.visitId)
+            ?.document(checklist.id.toString())
+
+        checklistRef?.set(checklist)?.await()
+
+        val answersCollection = checklistRef?.collection("answers")
+        answers.forEach { answer ->
+            answersCollection?.document(answer.id.toString())?.set(answer)?.await()
+        }
+    }
+
+    suspend fun deleteChecklist(checklist: VisitChecklist) {
+        getChecklistsCollection(checklist.visitId)
+            ?.document(checklist.id.toString())
+            ?.delete()
+            ?.await()
     }
 }

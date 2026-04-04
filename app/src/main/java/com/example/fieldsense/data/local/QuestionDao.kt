@@ -12,8 +12,11 @@ import com.example.fieldsense.data.model.Question
 
 @Dao
 interface QuestionDao {
-    @Query("SELECT * FROM questions WHERE templateId = :templateId ORDER BY id DESC")
+    @Query("SELECT * FROM questions WHERE templateId = :templateId ORDER BY `order` ASC")
     fun getQuestionsForTemplate(templateId: Int): Flow<List<Question>>
+
+    @Query("SELECT * FROM questions WHERE templateId = :templateId ORDER BY `order` ASC")
+    suspend fun getQuestionsForTemplateOnce(templateId: Int): List<Question>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertQuestions(questions: List<Question>)

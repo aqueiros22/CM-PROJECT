@@ -24,6 +24,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.fieldsense.Destination
 import com.example.fieldsense.MainScreen
 import com.example.fieldsense.ui.attachments.AttachmentViewModelFactory
+import com.example.fieldsense.ui.checklist.ChecklistViewModelFactory
 import com.example.fieldsense.ui.map.DownloadedMapsScreen
 import com.example.fieldsense.ui.map.LocationViewModel
 import com.example.fieldsense.ui.map.MapScreen
@@ -48,7 +49,8 @@ fun AppNavHost(
     onLogout: () -> Unit,
     noteFactory: NoteViewModelFactory,
     attachmentFactory: AttachmentViewModelFactory,
-    templateFactory: TemplateViewModelFactory
+    templateFactory: TemplateViewModelFactory,
+    checklistFactory: ChecklistViewModelFactory
 ) {
     NavHost(
         navController,
@@ -64,6 +66,8 @@ fun AppNavHost(
                         onLogout = onLogout,
                         noteFactory =  noteFactory,
                         attachmentFactory = attachmentFactory,
+                        templateFactory = templateFactory,
+                        checklistFactory = checklistFactory,
                         onNavigateToDrawing = { visitId ->
                             navController.navigate("draw_area/$visitId")
                         })
@@ -111,7 +115,8 @@ fun NavigationBar(
     onLogout: () -> Unit,
     noteFactory: NoteViewModelFactory,
     attachmentFactory: AttachmentViewModelFactory,
-    templateFactory: TemplateViewModelFactory
+    templateFactory: TemplateViewModelFactory,
+    checklistFactory: ChecklistViewModelFactory
 ) {
     val offlineManager = rememberOfflineManager()
     val navController = rememberNavController()
@@ -162,7 +167,8 @@ fun NavigationBar(
                 onLogout,
                 noteFactory,
                 attachmentFactory,
-                templateFactory
+                templateFactory,
+                checklistFactory
             )
         }
 

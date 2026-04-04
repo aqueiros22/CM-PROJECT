@@ -21,6 +21,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun attachmentDao(): AttachmentDao
     abstract fun templateDao(): TemplateDao
     abstract fun questionDao(): QuestionDao
+    abstract fun checklistDao(): ChecklistDao
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null

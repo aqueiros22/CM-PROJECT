@@ -55,6 +55,8 @@ import com.cloudinary.android.MediaManager
 import com.example.fieldsense.data.remote.CloudinaryService
 import com.example.fieldsense.data.repository.AttachmentRepository
 import com.example.fieldsense.data.repository.AuthRepository
+import com.example.fieldsense.data.repository.ChecklistRepository
+import com.example.fieldsense.data.repository.QuestionRepository
 import com.example.fieldsense.data.repository.TemplateRepository
 import com.example.fieldsense.ui.map.LocationViewModel
 import com.example.fieldsense.ui.visits.VisitDetailScreen
@@ -62,6 +64,8 @@ import com.example.fieldsense.ui.auth.AuthState
 import com.example.fieldsense.ui.auth.AuthViewModel
 import com.example.fieldsense.ui.auth.AuthViewModelFactory
 import com.example.fieldsense.ui.auth.AuthenticationScreen
+import com.example.fieldsense.ui.checklist.ChecklistViewModel
+import com.example.fieldsense.ui.checklist.ChecklistViewModelFactory
 import com.example.fieldsense.ui.notes.NoteViewModel
 import com.example.fieldsense.ui.notes.NoteViewModelFactory
 import com.example.fieldsense.ui.templates.TemplateViewModelFactory
@@ -115,6 +119,11 @@ class MainActivity : ComponentActivity() {
             firestoreService
         )
         val templateFactory = TemplateViewModelFactory(templateRepository)
+        val checklistRepository = ChecklistRepository(
+            database.checklistDao(),
+            firestoreService
+        )
+        val checklistFactory = ChecklistViewModelFactory(checklistRepository, QuestionRepository(database.questionDao()))
         setContent {
             FieldSenseTheme {
                 val authViewModel: AuthViewModel = viewModel(factory = authFactory)
@@ -139,7 +148,8 @@ class MainActivity : ComponentActivity() {
                                 onLogout = { authViewModel.signOut() },
                                 locationViewModel = locationViewModel,
                                 noteFactory = noteFactory,
-                                templateFactory = templateFactory
+                                templateFactory = templateFactory,
+                                checklistFactory = checklistFactory
                             )
                         }
                         else -> {
@@ -164,6 +174,8 @@ fun MainScreen(
     visitViewModel: VisitViewModel,
     noteFactory: NoteViewModelFactory,
     attachmentFactory: AttachmentViewModelFactory,
+    checklistFactory: ChecklistViewModelFactory,
+    templateFactory: TemplateViewModelFactory,
     onLogout: () -> Unit,
     onNavigateToDrawing: (Int) -> Unit = {}
 ) {
@@ -236,7 +248,7 @@ fun MainScreen(
     // Se tiver visita selecionada, mostra o ecrã de detalhe
     val noteViewModel: NoteViewModel = viewModel(factory = noteFactory)
     val attachmentViewModel: AttachmentViewModel = viewModel(factory = attachmentFactory)
-
+    val checklistViewModel: ChecklistViewModel = viewModel(factory = checklistFactory)
     LaunchedEffect(userId) {
         noteViewModel.setUserId(userId)
     }
@@ -247,8 +259,10 @@ fun MainScreen(
             visitViewModel = visitViewModel,
             noteViewModel = noteViewModel,
             attachmentViewModel = attachmentViewModel,
+            checklistViewModel = checklistViewModel,
             onBack = { selectedVisitId = null },
-            onNavigateToDrawing = onNavigateToDrawing
+            onNavigateToDrawing = onNavigateToDrawing,
+            templateFactory = templateFactory
         )
         return
     }
@@ -266,6 +280,7 @@ fun MainScreen(
                 visitViewModel.onNetworkRestored()
                 noteViewModel.onNetworkRestored()
                 attachmentViewModel.onNetworkRestored()
+                checklistViewModel.onNetworkRestored()
             }
         }
 
