@@ -25,6 +25,8 @@ import com.example.fieldsense.ui.map.LocationViewModel
 import com.example.fieldsense.ui.map.MapScreen
 import com.example.fieldsense.ui.map.OfflineMapScreen
 import com.example.fieldsense.ui.notes.NoteViewModelFactory
+import com.example.fieldsense.ui.templates.TemplateViewModelFactory
+import com.example.fieldsense.ui.templates.TemplatesScreen
 import com.example.fieldsense.ui.visits.VisitViewModel
 import org.maplibre.compose.offline.OfflineManager
 import org.maplibre.compose.offline.rememberOfflineManager
@@ -40,7 +42,8 @@ fun AppNavHost(
     offlineManager: OfflineManager,
     onLogout: () -> Unit,
     noteFactory: NoteViewModelFactory,
-    attachmentFactory: AttachmentViewModelFactory
+    attachmentFactory: AttachmentViewModelFactory,
+    templateFactory: TemplateViewModelFactory
 ) {
     NavHost(
         navController,
@@ -58,6 +61,7 @@ fun AppNavHost(
                         attachmentFactory = attachmentFactory)
                     Destination.MAP -> MapScreen(Modifier, locationViewModel, onNavigateToOfflineMap = {navController.navigate("offline_map")})
                     Destination.DOWNLOADED_MAPS -> DownloadedMapsScreen(offlineManager)
+                    Destination.TEMPLATES -> TemplatesScreen(templateFactory)
                 }
             }
         }
@@ -74,7 +78,8 @@ fun NavigationBar(
     locationViewModel: LocationViewModel,
     onLogout: () -> Unit,
     noteFactory: NoteViewModelFactory,
-    attachmentFactory: AttachmentViewModelFactory
+    attachmentFactory: AttachmentViewModelFactory,
+    templateFactory: TemplateViewModelFactory
 ) {
     val offlineManager = rememberOfflineManager()
     val navController = rememberNavController()
@@ -117,7 +122,8 @@ fun NavigationBar(
                 offlineManager,
                 onLogout,
                 noteFactory,
-                attachmentFactory
+                attachmentFactory,
+                templateFactory
             )
         }
 

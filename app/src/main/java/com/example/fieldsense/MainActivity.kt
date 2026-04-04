@@ -45,6 +45,7 @@ import java.util.Locale
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.LocationServices
@@ -55,6 +56,7 @@ import com.cloudinary.android.MediaManager
 import com.example.fieldsense.data.remote.CloudinaryService
 import com.example.fieldsense.data.repository.AttachmentRepository
 import com.example.fieldsense.data.repository.AuthRepository
+import com.example.fieldsense.data.repository.TemplateRepository
 import com.example.fieldsense.ui.map.LocationViewModel
 import com.example.fieldsense.ui.visits.VisitDetailScreen
 import com.example.fieldsense.location.getAddressFromLocation
@@ -66,6 +68,7 @@ import com.example.fieldsense.ui.map.PreviewMapScreen
 import org.maplibre.compose.offline.OfflineManager
 import org.maplibre.compose.offline.rememberOfflineManager
 import com.example.fieldsense.ui.auth.AuthenticationScreen
+import com.example.fieldsense.ui.templates.TemplateViewModelFactory
 import com.example.fieldsense.ui.utils.AddVisitDialog
 import com.example.fieldsense.ui.utils.NavigationBar
 import com.example.fieldsense.ui.utils.VisitCard
@@ -94,7 +97,12 @@ class MainActivity : ComponentActivity() {
         val attachmentRepository =
             AttachmentRepository(database.attachmentDao(), firestoreService, cloudinaryService)
         val attachmentFactory = AttachmentViewModelFactory(attachmentRepository)
-
+        val templateRepository = TemplateRepository(
+            database.templateDao(),
+            database.questionDao(),
+            firestoreService
+        )
+        val templateFactory = TemplateViewModelFactory(templateRepository)
         setContent {
             FieldSenseTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -119,7 +127,8 @@ class MainActivity : ComponentActivity() {
                                 attachmentFactory = attachmentFactory,
                                 onLogout = { authViewModel.signOut() },
                                 locationViewModel = locationViewModel,
-                                noteFactory = noteFactory
+                                noteFactory = noteFactory,
+                                templateFactory = templateFactory
                             )
                         }
                         else -> {
@@ -332,4 +341,5 @@ enum class Destination(
     MAIN("home", "", Icons.Default.Home, ""),
     MAP("map", "", Icons.Default.LocationOn, ""),
     DOWNLOADED_MAPS("downloaded_map", "", Icons.Default.Download, ""),
+    TEMPLATES("templates", "", Icons.Default.ListAlt, "")
 }
