@@ -1,6 +1,7 @@
 package com.example.fieldsense.ui.map
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,11 +13,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
@@ -31,10 +35,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,11 +52,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fieldsense.ui.theme.Shapes
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import org.maplibre.compose.offline.OfflineManager
 import org.maplibre.compose.offline.DownloadProgress
 import org.maplibre.compose.offline.DownloadStatus
@@ -77,6 +88,7 @@ fun DownloadedMapsScreen(
 
         }
     }
+    val context = LocalContext.current
 
     //val currentCenter = center
     if (centerLat != null && centerLng != null) {
@@ -94,8 +106,8 @@ fun DownloadedMapsScreen(
     packToDelete?.let { pack ->
         AlertDialog(
             onDismissRequest = { packToDelete = null },
-            title = { Text("Delete map") },
-            text = { Text("Are you sure you want to delete \"${pack.metadata?.decodeToString()}\"?") },
+            title = { Text("Apagar mapa") },
+            text = { Text("Deseja apagar o mapa \"${pack.metadata?.decodeToString()}\"?") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -105,12 +117,12 @@ fun DownloadedMapsScreen(
                         packToDelete = null
                     }
                 ) {
-                    Text("Delete", color = Color.Red)
+                    Text("Apagar", color = Color.Red)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { packToDelete = null }) {
-                    Text("Cancel")
+                    Text("Cancelar")
                 }
             }
         )
@@ -127,7 +139,7 @@ fun DownloadedMapsScreen(
             ) {
 
                 Text(
-                    text = "Downloaded Maps",
+                    text = "Mapas transferidos",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -175,8 +187,33 @@ fun DownloadedMapsScreen(
                             pack = pack,
                             onPreview = { onPreviewPack(pack) },
                             onDelete = { packToDelete = pack },
-                            onPause = { offlineManager.pause(pack) },
-                            onResume = { coroutineScope.launch { offlineManager.resume(pack) } }
+                            onUpdateMetadata = { newName, selectedPack ->
+                                Log.d("UpdateMetadata", "selectedPackMeta: ${selectedPack.metadata?.decodeToString()}")
+
+                                val existingNames = offlineManager.packs.map { pack ->
+                                    try {
+                                        val json = pack.metadata?.decodeToString()
+                                        JSONObject(json ?: "").optString("name", "")
+                                    } catch (e: Exception) { "" }
+                                }
+                                Log.d("UpdateMetadata", "existingNames: $existingNames")
+
+                                if (existingNames.contains(newName)) {
+                                    Log.e("UpdateMetadata", "Error: O nome '$newName' já existe.")
+                                    Toast.makeText(context, "O nome '$newName' já existe.", Toast.LENGTH_SHORT).show()
+                                // You could add a Toast here to inform the user
+
+                                } else {
+                                    Log.d("UpdateMetadata", "Nome único confirmado: $newName")
+                                    coroutineScope.launch {
+                                        val json = """{ "name": "$newName" }"""
+                                        val bytes = json.toByteArray(Charsets.UTF_8)
+                                        Log.d("UpdateMetadata", "bytes: $bytes")
+                                        selectedPack.setMetadata(bytes)
+
+                                    }
+                                }
+                            }
                         )
                     }
                 }
@@ -192,16 +229,23 @@ fun DownloadedMapCard(
     pack: OfflinePack,
     onPreview: () -> Unit,
     onDelete: () -> Unit,
-    onPause: () -> Unit,
-    onResume: () -> Unit
+    onUpdateMetadata: (packNewName: String, pack: OfflinePack) -> Unit
 ) {
-    val packName = remember(pack) {
-        pack.metadata?.decodeToString()?.ifEmpty { "Unknown" } ?: "Unknown"
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var packName by remember(pack) {
+        mutableStateOf(
+            try {
+                val json = pack.metadata?.decodeToString()
+                JSONObject(json ?: "").optString("name", "Desconhecido")
+            } catch (e: Exception) {
+                "Desconhecido"
+            }
+        )
+
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        //shape = RoundedCornerShape(12.dp)
         shape = MaterialTheme.shapes.medium,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
@@ -221,22 +265,60 @@ fun DownloadedMapCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Icon based on status
-                    val iconTint = when (pack.downloadProgress) {
-                        is DownloadProgress.Healthy -> Color(0xFF4CAF50)
-                        else -> Color(0xFF4285F4)
-                    }
-                    Icon(
-                        imageVector = when (pack.downloadProgress) {
-                            is DownloadProgress.Healthy -> Icons.Default.OfflinePin
-                            else -> Icons.Default.Error
-                        },
-                        contentDescription = null,
-                        tint = iconTint,
-                        modifier = Modifier.size(28.dp)
-                    )
-                    Column {
-                        Text(packName, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+
+                    Column (
+                        horizontalAlignment = Alignment.Start,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            val progress = pack.downloadProgress
+
+                            if ((progress is DownloadProgress.Healthy) && (progress.status == DownloadStatus.Complete)) {
+                                // Name input
+                                TextField(
+                                    modifier = Modifier.requiredWidth(220.dp),
+                                    value = packName,
+                                    onValueChange = {packName = it},
+                                    //label = { Text("Nome") }
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions( imeAction = ImeAction.Done),
+                                    keyboardActions = KeyboardActions(onDone = {
+                                        onUpdateMetadata(packName, pack)
+                                        keyboardController?.hide()
+
+                                    }),
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = Color.Transparent,
+                                        unfocusedContainerColor = Color.Transparent,
+                                        disabledContainerColor = Color.Transparent
+                                    )
+                                )
+                            } else {
+                                Text("$packName", fontSize = 16.sp)
+                            }
+
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            // Delete button
+                            IconButton(
+                                onClick = onDelete,
+                                modifier = Modifier
+                                    .size(50.dp)
+
+                            ) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = Color.Red,
+                                    modifier = Modifier.size(30.dp)
+                                )
+                            }
+
+                        }
                         // Zoom range
                         val definition = pack.definition
                         if (definition is OfflinePackDefinition.TilePyramid) {
@@ -249,14 +331,6 @@ fun DownloadedMapCard(
                     }
                 }
 
-                // Delete button
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = Color.Red
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -324,32 +398,6 @@ fun DownloadedMapCard(
 
                     }
 
-/*                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Pause / Resume
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (progress.status == DownloadStatus.ACTIVE) {
-                            OutlinedButton(onClick = onPause) {
-                                Icon(
-                                    Icons.Default.Pause,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Pause")
-                            }
-                        } else {
-                            OutlinedButton(onClick = onResume) {
-                                Icon(
-                                    Icons.Default.PlayArrow,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Resume")
-                            }
-                        }
-                    }*/
                 }
 
 

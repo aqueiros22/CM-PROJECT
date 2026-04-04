@@ -2,50 +2,60 @@ package com.example.fieldsense.ui.visits
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.QrCode
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.fieldsense.BuildConfig
+import com.example.fieldsense.R
+import com.example.fieldsense.data.model.Attachment
 import com.example.fieldsense.data.model.Note
 import com.example.fieldsense.data.model.Visit
-import com.example.fieldsense.ui.notes.NoteViewModel
-import com.example.fieldsense.ui.notes.NoteDetailScreen
-import com.example.fieldsense.ui.visits.VisitViewModel
-import com.example.fieldsense.data.model.Attachment
 import com.example.fieldsense.ui.attachments.AttachmentDetailScreen
 import com.example.fieldsense.ui.attachments.AttachmentViewModel
-import android.net.Uri
-import android.provider.OpenableColumns
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.AttachFile
-
-
+import com.example.fieldsense.ui.notes.NoteDetailScreen
+import com.example.fieldsense.ui.notes.NoteViewModel
+import com.example.fieldsense.ui.utils.DeleteConfirmationDialog
+import kotlinx.serialization.json.JsonObject
+import org.maplibre.compose.camera.CameraPosition
+import org.maplibre.compose.camera.rememberCameraState
+import org.maplibre.compose.expressions.dsl.const
+import org.maplibre.compose.layers.CircleLayer
+import org.maplibre.compose.layers.FillLayer
+import org.maplibre.compose.layers.LineLayer
+import org.maplibre.compose.map.MaplibreMap
+import org.maplibre.compose.sources.GeoJsonData
+import org.maplibre.compose.sources.rememberGeoJsonSource
+import org.maplibre.compose.style.BaseStyle
+import org.maplibre.compose.util.ClickResult
+import org.maplibre.spatialk.geojson.Feature
+import org.maplibre.spatialk.geojson.FeatureCollection
+import org.maplibre.spatialk.geojson.Point
+import org.maplibre.spatialk.geojson.Position
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,7 +64,8 @@ fun VisitDetailScreen(
     visitViewModel: VisitViewModel,
     noteViewModel: NoteViewModel,
     attachmentViewModel: AttachmentViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onNavigateToDrawing: (Int) -> Unit = {}
 ) {
     val context = LocalContext.current
     val notes by noteViewModel.getNotesForVisit(visit.id).collectAsState()
@@ -65,11 +76,11 @@ fun VisitDetailScreen(
     var selectedNoteId by rememberSaveable { mutableStateOf<Int?>(null) }
     val selectedNote = notes.find { it.id == selectedNoteId }
 
-
     var selectedAttachmentId by rememberSaveable { mutableStateOf<Int?>(null) }
     val selectedAttachment = attachments.find { it.id == selectedAttachmentId }
 
-    // Launcher para escolher imagem da galeria
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -79,12 +90,10 @@ fun VisitDetailScreen(
         }
     }
 
-    // Launcher para escolher qualquer ficheiro
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            // Obtém o nome real do ficheiro com extensão
             val fileName = context.contentResolver.query(
                 it, null, null, null, null
             )?.use { cursor ->
@@ -118,97 +127,134 @@ fun VisitDetailScreen(
         )
         return
     }
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = { Text(visit.name, fontWeight = FontWeight.SemiBold) },
+            LargeTopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            visit.name,
+                            fontWeight = FontWeight.ExtraBold,
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                        Text(
+                            "Detalhes da Visita e Notas",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cancel))
                     }
                 },
                 actions = {
                     IconButton(onClick = {
                         val notesText = notes.joinToString("\n\n") { "${it.date}:\n${it.content}" }
-                        val shareContent = "Visita: ${visit.name}\nLocal: ${visit.location}\nCódigo: ${visit.code}\n\nNotas:\n$notesText"
+                        val shareContent = "Visita: ${visit.name}\nLocalização: ${visit.location}\nCódigo: ${visit.code}\n\nNotas:\n$notesText"
                         val sendIntent = Intent().apply {
                             action = Intent.ACTION_SEND
                             putExtra(Intent.EXTRA_TEXT, shareContent)
                             type = "text/plain"
                         }
-                        val shareIntent = Intent.createChooser(sendIntent, "Exportar Notas")
+                        val shareIntent = Intent.createChooser(sendIntent, "Exportar Dados da Visita")
                         context.startActivity(shareIntent)
                     }) {
-                        Icon(Icons.Filled.Share, contentDescription = "Partilhar Tudo")
+                        Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.share))
                     }
                     IconButton(onClick = { showEditVisitDialog = true }) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Editar Visita")
+                        Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.edit_visit))
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = Color(0xF0E8F5E9),
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
+            ExtendedFloatingActionButton(
                 onClick = { showAddNoteDialog = true },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "Nova Anotação")
-            }
+                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                text = { Text(stringResource(R.string.new_note)) },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
         }
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(vertical = 24.dp)
+                .padding(innerPadding),
+            contentPadding = PaddingValues(bottom = 80.dp, top = 8.dp, start = 16.dp, end = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Card de detalhes da visita
+            // Visit Info Card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    shape = MaterialTheme.shapes.large,
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = Color(0xF0E8F5E9)
                     )
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text("Detalhes", style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary)
-                        Text(visit.date, style = MaterialTheme.typography.bodyLarge)
-                        Text(visit.location, style = MaterialTheme.typography.bodyLarge)
-                        Text(visit.code, style = MaterialTheme.typography.bodyLarge)
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.CalendarToday, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(visit.date, style = MaterialTheme.typography.bodyLarge, color = Color.Black)
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.LocationOn, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(visit.location, style = MaterialTheme.typography.bodyLarge, color = Color.Black)
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.QrCode, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(visit.code, style = MaterialTheme.typography.bodyLarge, color = Color.Black)
+                        }
                     }
                 }
             }
 
-            // Secção de anexos
+            // Map Section
+            item {
+                VisitAreaMapSection(visit = visit, onEditArea = { onNavigateToDrawing(visit.id) })
+            }
+
+            // Attachments Section
             item {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Anexos", style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary)
-                    Row {
-                        // Botão para adicionar imagem
-                        IconButton(onClick = { imagePickerLauncher.launch("image/*") }) {
-                            Icon(Icons.Filled.Image, contentDescription = "Adicionar Imagem",
-                                tint = MaterialTheme.colorScheme.primary)
+                    Text(
+                        stringResource(R.string.attachments),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilledTonalIconButton(onClick = { imagePickerLauncher.launch("image/*") },
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = Color(0xF0E8F5E9)
+                            )) {
+                            Icon(Icons.Filled.Image, contentDescription = "Adicionar Imagem", tint = Color.Black)
                         }
-                        // Botão para adicionar ficheiro
-                        IconButton(onClick = { filePicker.launch("*/*") }) {
-                            Icon(Icons.Filled.AttachFile, contentDescription = "Adicionar Ficheiro",
-                                tint = MaterialTheme.colorScheme.primary)
+                        FilledTonalIconButton(onClick = { filePicker.launch("*/*") },
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = Color(0xF0E8F5E9)
+                            )) {
+                            Icon(Icons.Filled.AttachFile, contentDescription = "Adicionar Ficheiro", tint = Color.Black)
                         }
                     }
                 }
@@ -216,8 +262,11 @@ fun VisitDetailScreen(
 
             if (attachments.isEmpty()) {
                 item {
-                    Text("Nenhum anexo ainda.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        stringResource(R.string.no_attachments),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
                 }
             } else {
                 items(attachments) { attachment ->
@@ -229,23 +278,33 @@ fun VisitDetailScreen(
                 }
             }
 
-            // Secção de anotações
+            // Notes Section
             item {
-                Text("Anotações", style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary)
+                Text(
+                    stringResource(R.string.notes),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
             }
 
             if (notes.isEmpty()) {
                 item {
-                    Text("Nenhuma anotação ainda.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        stringResource(R.string.no_notes),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
                 }
             } else {
                 items(notes) { note ->
                     NoteCard(
                         note = note,
                         onDelete = { noteViewModel.deleteNote(note) },
-                        onClick = { selectedNoteId = note.id }
+                        onClick = { selectedNoteId = note.id },
+
+
                     )
                 }
             }
@@ -275,30 +334,196 @@ fun VisitDetailScreen(
 }
 
 @Composable
+fun VisitAreaMapSection(visit: Visit, onEditArea: () -> Unit) {
+    val context = LocalContext.current
+    val points = remember(visit.area) {
+        val list = mutableListOf<Position>()
+        visit.area?.let { areaStr ->
+            areaStr.split(";").forEach { pair ->
+                val coords = pair.split(",")
+                if (coords.size == 2) {
+                    try {
+                        list.add(Position(coords[1].toDouble(), coords[0].toDouble()))
+                    } catch (e: Exception) {
+                        // ignore
+                    }
+                }
+            }
+        }
+        list
+    }
+
+    // Extract center from visit.location
+    val center = remember(visit.location) {
+        try {
+            val cleanText = visit.location.replace(" (Last known)", "").trim()
+            val parts = cleanText.split(",")
+            if (parts.size == 2) {
+                Position(parts[1].trim().toDouble(), parts[0].trim().toDouble())
+            } else {
+                Position(-9.1399, 38.7169)
+            }
+        } catch (e: Exception) {
+            Position(-9.1399, 38.7169)
+        }
+    }
+
+    val cameraState = rememberCameraState(
+        firstPosition = CameraPosition(
+            target = center,
+            zoom = 15.0
+        )
+    )
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                stringResource(R.string.visit_area),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            TextButton(onClick = onEditArea) {
+                Text(if (points.isEmpty()) stringResource(R.string.define_area) else stringResource(R.string.edit_area))
+            }
+        }
+        
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            shape = MaterialTheme.shapes.medium,
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                MaplibreMap(
+                    modifier = Modifier.fillMaxSize(),
+                    baseStyle = BaseStyle.Uri("https://api.maptiler.com/maps/hybrid-v4/style.json?key=${BuildConfig.MAPTILER_API_KEY}"),
+                    cameraState = cameraState,
+                    onMapClick = { _, _ -> ClickResult.Consume }
+                ) {
+                    // Visit location marker
+                    val centerSource = rememberGeoJsonSource(
+                        data = GeoJsonData.Features(
+                            FeatureCollection(
+                                Feature(
+                                    geometry = Point(center),
+                                    properties = JsonObject(content = emptyMap())
+                                )
+                            )
+                        )
+                    )
+                    CircleLayer(
+                        id = "visit-location-marker",
+                        source = centerSource,
+                        radius = const(6.dp),
+                        color = const(MaterialTheme.colorScheme.primary)
+                    )
+
+                    // Polygon preview
+                    if (points.size >= 2) {
+                        val geoJson = buildString {
+                            append("""{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[""")
+                            points.forEachIndexed { index, pos ->
+                                if (index > 0) append(",")
+                                append("[${pos.longitude}, ${pos.latitude}]")
+                            }
+                            append(",[${points.first().longitude}, ${points.first().latitude}]")
+                            append("""]]}}""")
+                        }
+
+                        val polygonSource = rememberGeoJsonSource(data = GeoJsonData.JsonString(geoJson))
+
+                        FillLayer(
+                            id = "area-fill-preview",
+                            source = polygonSource,
+                            color = const(Color(0xFF4CAF50)),
+                            opacity = const(0.3f)
+                        )
+                        LineLayer(
+                            id = "area-outline-preview",
+                            source = polygonSource,
+                            color = const(Color(0xFF4CAF50)),
+                            width = const(2.dp)
+                        )
+                    }
+                }
+                
+                if (points.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.5f),
+                            shape = CircleShape
+                        ) {
+                            Text(
+                                stringResource(R.string.no_area),
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun AttachmentCard(attachment: Attachment, onDelete: () -> Unit, onClick: () -> Unit) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        DeleteConfirmationDialog(
+            title = "Apagar Anexo",
+            message = "Tem a certeza que deseja apagar este anexo?",
+            onConfirm = {
+                onDelete()
+                showDeleteDialog = false
+            },
+            onDismiss = { showDeleteDialog = false }
+        )
+    }
+
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
         Row(
             modifier = Modifier.padding(12.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = if (attachment.type == "image") Icons.Filled.Image else Icons.Filled.AttachFile,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = if (attachment.type == "image") Icons.Filled.Image else Icons.Filled.Description,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = attachment.fileName,
                     style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -308,21 +533,122 @@ fun AttachmentCard(attachment: Attachment, onDelete: () -> Unit, onClick: () -> 
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Icon(
-                imageVector = if (attachment.isSynced) Icons.Filled.Check else Icons.Filled.Build,
-                contentDescription = if (attachment.isSynced) "Synced" else "Pending",
-                modifier = Modifier.size(16.dp),
-                tint = if (attachment.isSynced) Color(0xFF4CAF50) else Color.Gray
-            )
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = "Apagar",
-                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f))
+
+            if (!attachment.isSynced) {
+                Icon(
+                    Icons.Filled.CloudUpload,
+                    contentDescription = stringResource(R.string.pending),
+                    modifier = Modifier.size(16.dp).padding(end = 8.dp),
+                    tint = MaterialTheme.colorScheme.secondary
+                )
+            }
+
+            IconButton(
+                onClick = { showDeleteDialog = true },
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                ),
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete), modifier = Modifier.size(16.dp))
             }
         }
     }
 }
 
-// Composables existentes sem alterações
+@Composable
+fun NoteCard(note: Note, onDelete: () -> Unit, onClick: () -> Unit) {
+    val context = LocalContext.current
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        DeleteConfirmationDialog(
+            title = "Apagar Nota",
+            message = "Tem a certeza que deseja apagar esta nota?",
+            onConfirm = {
+                onDelete()
+                showDeleteDialog = false
+            },
+            onDismiss = { showDeleteDialog = false }
+        )
+    }
+
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = Color(0xF0E8F5E9))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Text(
+                    note.content,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                if (!note.isSynced) {
+                    Icon(
+                        Icons.Filled.CloudUpload,
+                        contentDescription = stringResource(R.string.pending),
+                        modifier = Modifier.size(20.dp).padding(start = 4.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    note.date,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    IconButton(
+                        onClick = {
+                            val sendIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                putExtra(Intent.EXTRA_TEXT, note.content)
+                                type = "text/plain"
+                            }
+                            val shareIntent = Intent.createChooser(sendIntent, null)
+                            context.startActivity(shareIntent)
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.share), modifier = Modifier.size(18.dp), Color.Black   )
+                    }
+                    IconButton(
+                        onClick = { showDeleteDialog = true },
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        ),
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete), modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun EditVisitDialog(
     visit: Visit,
@@ -336,32 +662,38 @@ fun EditVisitDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Editar Visita") },
+        shape = MaterialTheme.shapes.extraLarge,
+        title = { Text(stringResource(R.string.edit_visit), fontWeight = FontWeight.Bold) },
+        containerColor = Color(0xF0E8F5E9),
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nome do Local") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text(stringResource(R.string.site_name)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
                 )
                 OutlinedTextField(
                     value = code,
                     onValueChange = { code = it },
-                    label = { Text("Código") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text(stringResource(R.string.visit_code)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
                 )
                 OutlinedTextField(
                     value = location,
                     onValueChange = { location = it },
-                    label = { Text("Localização") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text(stringResource(R.string.location)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
                 )
                 OutlinedTextField(
                     value = date,
                     onValueChange = { date = it },
                     label = { Text("Data") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
                 )
             }
         },
@@ -371,61 +703,12 @@ fun EditVisitDialog(
                     onConfirm(visit.copy(name = name, code = code, location = location, date = date))
                 },
                 enabled = name.isNotBlank() && code.isNotBlank() && location.isNotBlank() && date.isNotBlank()
-            ) { Text("Guardar") }
+            ) { Text(stringResource(R.string.save_changes)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
-}
-
-@Composable
-fun NoteCard(note: Note, onDelete: () -> Unit, onClick: () -> Unit) {
-    val context = LocalContext.current
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = if (note.isSynced) Icons.Filled.Check else Icons.Filled.Build,
-                contentDescription = if (note.isSynced) "Synced" else "Pending Sync",
-                modifier = Modifier.size(16.dp),
-                tint = if (note.isSynced) Color(0xFF4CAF50) else Color.Gray
-            )
-            Spacer(modifier = Modifier.padding(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(note.content, style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(note.date, style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Row {
-                IconButton(onClick = {
-                    val sendIntent = Intent().apply {
-                        action = Intent.ACTION_SEND
-                        putExtra(Intent.EXTRA_TEXT, note.content)
-                        type = "text/plain"
-                    }
-                    val shareIntent = Intent.createChooser(sendIntent, null)
-                    context.startActivity(shareIntent)
-                }) {
-                    Icon(Icons.Filled.Share, contentDescription = "Partilhar Nota", modifier = Modifier.size(20.dp))
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Filled.Delete, contentDescription = "Apagar",
-                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f))
-                }
-            }
-        }
-    }
 }
 
 @Composable
@@ -447,24 +730,27 @@ fun AddNoteDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nova Anotação") },
+        shape = MaterialTheme.shapes.extraLarge,
+        title = { Text(stringResource(R.string.add_note_title), fontWeight = FontWeight.Bold) },
+        containerColor = Color(0xF0E8F5E9),
         text = {
             OutlinedTextField(
                 value = content,
                 onValueChange = { content = it },
-                label = { Text("Anotação") },
+                label = { Text(stringResource(R.string.note_details_hint)) },
                 modifier = Modifier.fillMaxWidth(),
-                minLines = 3,
+                minLines = 4,
+                shape = MaterialTheme.shapes.medium,
                 trailingIcon = {
                     IconButton(onClick = {
                         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-PT")
-                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Fale para escrever a anotação...")
+                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Fale para gravar nota...")
                         }
                         speechRecognizerLauncher.launch(intent)
                     }) {
-                        Icon(imageVector = Icons.Filled.Mic, contentDescription = "Voz para Texto")
+                        Icon(imageVector = Icons.Filled.Mic, contentDescription = "Voz para Texto", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
             )
@@ -472,11 +758,12 @@ fun AddNoteDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
         confirmButton = {
             Button(
                 onClick = { onConfirm(content) },
-                enabled = content.isNotBlank()
-            ) { Text("Guardar") }
+                enabled = content.isNotBlank(),
+                shape = MaterialTheme.shapes.medium
+            ) { Text(stringResource(R.string.record_note)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }

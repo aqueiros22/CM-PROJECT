@@ -42,11 +42,6 @@ import com.example.fieldsense.data.repository.VisitRepository
 import com.example.fieldsense.location.getAddressFromLocation
 import com.example.fieldsense.ui.attachments.AttachmentViewModel
 import com.example.fieldsense.ui.attachments.AttachmentViewModelFactory
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.launch
@@ -55,16 +50,14 @@ import com.cloudinary.android.MediaManager
 import com.example.fieldsense.data.remote.CloudinaryService
 import com.example.fieldsense.data.repository.AttachmentRepository
 import com.example.fieldsense.data.repository.AuthRepository
-import com.example.fieldsense.data.repository.TemplateRepository
-import com.example.fieldsense.ui.map.LocationViewModel
 import com.example.fieldsense.ui.visits.VisitDetailScreen
 import com.example.fieldsense.ui.auth.AuthState
 import com.example.fieldsense.ui.auth.AuthViewModel
 import com.example.fieldsense.ui.auth.AuthViewModelFactory
 import com.example.fieldsense.ui.auth.AuthenticationScreen
+import com.example.fieldsense.ui.map.LocationViewModel
 import com.example.fieldsense.ui.notes.NoteViewModel
 import com.example.fieldsense.ui.notes.NoteViewModelFactory
-import com.example.fieldsense.ui.templates.TemplateViewModelFactory
 import com.example.fieldsense.ui.theme.FieldSenseTheme
 import com.example.fieldsense.ui.utils.AddVisitDialog
 import com.example.fieldsense.ui.utils.NavigationBar
@@ -75,6 +68,9 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
@@ -109,12 +105,7 @@ class MainActivity : ComponentActivity() {
         val attachmentRepository =
             AttachmentRepository(database.attachmentDao(), firestoreService, cloudinaryService)
         val attachmentFactory = AttachmentViewModelFactory(attachmentRepository)
-        val templateRepository = TemplateRepository(
-            database.templateDao(),
-            database.questionDao(),
-            firestoreService
-        )
-        val templateFactory = TemplateViewModelFactory(templateRepository)
+
         setContent {
             FieldSenseTheme {
                 val authViewModel: AuthViewModel = viewModel(factory = authFactory)
@@ -138,8 +129,7 @@ class MainActivity : ComponentActivity() {
                                 attachmentFactory = attachmentFactory,
                                 onLogout = { authViewModel.signOut() },
                                 locationViewModel = locationViewModel,
-                                noteFactory = noteFactory,
-                                templateFactory = templateFactory
+                                noteFactory = noteFactory
                             )
                         }
                         else -> {
@@ -168,11 +158,10 @@ fun MainScreen(
     onNavigateToDrawing: (Int) -> Unit = {}
 ) {
     val context = LocalContext.current
-
-    // State to toggle between Active and Archived visits
+    
     var showArchived by rememberSaveable { mutableStateOf(false) }
-
     val visits by (if (showArchived) visitViewModel.archivedVisits else visitViewModel.visits).collectAsState()
+    
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var selectedVisitId by rememberSaveable { mutableStateOf<Int?>(null) }
     val selectedVisit = visits.find { it.id == selectedVisitId }
@@ -288,7 +277,7 @@ fun MainScreen(
                         horizontalAlignment = if (collapsedFraction > 0.5f) Alignment.CenterHorizontally else Alignment.Start
                     ) {
                         Text(
-                            "FieldSense",
+                            if (showArchived) "Archived Visits" else "FieldSense",
                             fontWeight = FontWeight.ExtraBold,
                             style = MaterialTheme.typography.headlineMedium,
                             modifier = Modifier.graphicsLayer {
@@ -298,9 +287,9 @@ fun MainScreen(
                             }
                         )
 
-                        if (collapsedFraction < 0.2f) {
+                        if (collapsedFraction < 0.2f) { 
                             Text(
-                                if (showArchived) "Visitas Arquivadas" else "Minhas Visitas",
+                                if (showArchived) "Managed archived records" else "My Field Visits",
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.graphicsLayer {
@@ -354,7 +343,7 @@ fun MainScreen(
                     },
                     expanded = isFabExtended,
                     icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                    text = { Text("Nova Visita") },
+                    text = { Text("New Visit") },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 )
@@ -370,7 +359,7 @@ fun MainScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Pesquisar por nome ou código...") },
+                placeholder = { Text("Search by name or code...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
@@ -387,7 +376,7 @@ fun MainScreen(
                 )
             )
 
-            // Section for switching between Active and Archived
+            // Tabs for Active/Archived
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -397,30 +386,20 @@ fun MainScreen(
                 FilterChip(
                     selected = !showArchived,
                     onClick = { showArchived = false },
-                    label = { Text("Ativas") },
+                    label = { Text("Active") },
                     leadingIcon = if (!showArchived) {
                         { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                    } else null,
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Color(0xFF74E06A),
-                        selectedLabelColor = Color.White,
-                        selectedLeadingIconColor = Color.White
-                    )
+                    } else null
                 )
                 FilterChip(
                     selected = showArchived,
                     onClick = { showArchived = true },
-                    label = { Text("Arquivadas") },
+                    label = { Text("Archived") },
                     leadingIcon = if (showArchived) {
                         { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
                     } else {
                         { Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                    },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Color.Black,
-                    selectedLabelColor = Color.White,
-                    selectedLeadingIconColor = Color.White
-                )
+                    }
                 )
             }
 
@@ -441,8 +420,8 @@ fun MainScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             if (searchQuery.isEmpty()) {
-                                if (showArchived) "Sem visitas arquivadas." else "Nenhuma visita registada."
-                            } else "Nenhum resultado encontrado.",
+                                if (showArchived) "No archived visits." else "No visits recorded yet."
+                            } else "No matches found.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.titleMedium
                         )
@@ -471,7 +450,7 @@ fun MainScreen(
 
         if (showAddDialog) {
             AddVisitDialog(
-                initialLocation = fetchedLocation, // Passamos a localização para o Diálogo!
+                initialLocation = fetchedLocation,
                 onDismiss = { showAddDialog = false },
                 onConfirm = { code, name, loc ->
                     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -493,5 +472,4 @@ enum class Destination(
     MAIN("home", "", Icons.Default.Home, ""),
     MAP("map", "", Icons.Default.LocationOn, ""),
     DOWNLOADED_MAPS("downloaded_map", "", Icons.Default.Download, ""),
-    TEMPLATES("templates", "", Icons.Default.ListAlt, "")
 }

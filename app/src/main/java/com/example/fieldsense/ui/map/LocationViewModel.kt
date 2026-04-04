@@ -17,11 +17,18 @@ class LocationViewModel: ViewModel() {
     var isSearching by mutableStateOf(false)
         private set
 
+    var isFetchingLocation by mutableStateOf(false)
+
     var searchResults by mutableStateOf<List<MapTilerFeature>>(emptyList())
         private set
 
     fun updateLocation(newLocation: LatLng) {
         _location.value = newLocation
+        isFetchingLocation = false
+    }
+
+    fun startFetchingLocation() {
+        isFetchingLocation = true
     }
 
     fun search(query: String) {

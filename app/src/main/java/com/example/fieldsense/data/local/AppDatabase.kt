@@ -13,7 +13,7 @@ import com.example.fieldsense.data.model.Template
 import com.example.fieldsense.data.model.VisitChecklist
 import com.example.fieldsense.data.model.Answer
 
-@Database(entities = [Visit::class, Note::class, Attachment::class, Template::class, Question::class, VisitChecklist::class, Answer::class ], version = 7, exportSchema = false)
+@Database(entities = [Visit::class, Note::class, Attachment::class, Template::class, Question::class, VisitChecklist::class, Answer::class ], version = 9, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun visitDao(): VisitDao
