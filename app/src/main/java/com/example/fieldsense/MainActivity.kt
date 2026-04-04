@@ -42,6 +42,11 @@ import com.example.fieldsense.data.repository.VisitRepository
 import com.example.fieldsense.location.getAddressFromLocation
 import com.example.fieldsense.ui.attachments.AttachmentViewModel
 import com.example.fieldsense.ui.attachments.AttachmentViewModelFactory
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.launch
@@ -50,14 +55,20 @@ import com.cloudinary.android.MediaManager
 import com.example.fieldsense.data.remote.CloudinaryService
 import com.example.fieldsense.data.repository.AttachmentRepository
 import com.example.fieldsense.data.repository.AuthRepository
+import com.example.fieldsense.data.repository.ChecklistRepository
+import com.example.fieldsense.data.repository.QuestionRepository
+import com.example.fieldsense.data.repository.TemplateRepository
+import com.example.fieldsense.ui.map.LocationViewModel
 import com.example.fieldsense.ui.visits.VisitDetailScreen
 import com.example.fieldsense.ui.auth.AuthState
 import com.example.fieldsense.ui.auth.AuthViewModel
 import com.example.fieldsense.ui.auth.AuthViewModelFactory
 import com.example.fieldsense.ui.auth.AuthenticationScreen
-import com.example.fieldsense.ui.map.LocationViewModel
+import com.example.fieldsense.ui.checklist.ChecklistViewModel
+import com.example.fieldsense.ui.checklist.ChecklistViewModelFactory
 import com.example.fieldsense.ui.notes.NoteViewModel
 import com.example.fieldsense.ui.notes.NoteViewModelFactory
+import com.example.fieldsense.ui.templates.TemplateViewModelFactory
 import com.example.fieldsense.ui.theme.FieldSenseTheme
 import com.example.fieldsense.ui.utils.AddVisitDialog
 import com.example.fieldsense.ui.utils.NavigationBar
@@ -68,9 +79,6 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
@@ -105,7 +113,17 @@ class MainActivity : ComponentActivity() {
         val attachmentRepository =
             AttachmentRepository(database.attachmentDao(), firestoreService, cloudinaryService)
         val attachmentFactory = AttachmentViewModelFactory(attachmentRepository)
-
+        val templateRepository = TemplateRepository(
+            database.templateDao(),
+            database.questionDao(),
+            firestoreService
+        )
+        val templateFactory = TemplateViewModelFactory(templateRepository)
+        val checklistRepository = ChecklistRepository(
+            database.checklistDao(),
+            firestoreService
+        )
+        val checklistFactory = ChecklistViewModelFactory(checklistRepository, QuestionRepository(database.questionDao()))
         setContent {
             FieldSenseTheme {
                 val authViewModel: AuthViewModel = viewModel(factory = authFactory)
@@ -129,7 +147,9 @@ class MainActivity : ComponentActivity() {
                                 attachmentFactory = attachmentFactory,
                                 onLogout = { authViewModel.signOut() },
                                 locationViewModel = locationViewModel,
-                                noteFactory = noteFactory
+                                noteFactory = noteFactory,
+                                templateFactory = templateFactory,
+                                checklistFactory = checklistFactory
                             )
                         }
                         else -> {
@@ -154,14 +174,16 @@ fun MainScreen(
     visitViewModel: VisitViewModel,
     noteFactory: NoteViewModelFactory,
     attachmentFactory: AttachmentViewModelFactory,
+    checklistFactory: ChecklistViewModelFactory,
+    templateFactory: TemplateViewModelFactory,
     onLogout: () -> Unit,
     onNavigateToDrawing: (Int) -> Unit = {}
 ) {
     val context = LocalContext.current
-    
+
     // State to toggle between Active and Archived visits
     var showArchived by rememberSaveable { mutableStateOf(false) }
-    
+
     val visits by (if (showArchived) visitViewModel.archivedVisits else visitViewModel.visits).collectAsState()
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var selectedVisitId by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -226,7 +248,7 @@ fun MainScreen(
     // Se tiver visita selecionada, mostra o ecrã de detalhe
     val noteViewModel: NoteViewModel = viewModel(factory = noteFactory)
     val attachmentViewModel: AttachmentViewModel = viewModel(factory = attachmentFactory)
-
+    val checklistViewModel: ChecklistViewModel = viewModel(factory = checklistFactory)
     LaunchedEffect(userId) {
         noteViewModel.setUserId(userId)
     }
@@ -237,8 +259,10 @@ fun MainScreen(
             visitViewModel = visitViewModel,
             noteViewModel = noteViewModel,
             attachmentViewModel = attachmentViewModel,
+            checklistViewModel = checklistViewModel,
             onBack = { selectedVisitId = null },
-            onNavigateToDrawing = onNavigateToDrawing
+            onNavigateToDrawing = onNavigateToDrawing,
+            templateFactory = templateFactory
         )
         return
     }
@@ -256,6 +280,7 @@ fun MainScreen(
                 visitViewModel.onNetworkRestored()
                 noteViewModel.onNetworkRestored()
                 attachmentViewModel.onNetworkRestored()
+                checklistViewModel.onNetworkRestored()
             }
         }
 
@@ -288,7 +313,7 @@ fun MainScreen(
                             }
                         )
 
-                        if (collapsedFraction < 0.2f) { 
+                        if (collapsedFraction < 0.2f) {
                             Text(
                                 if (showArchived) "Visitas Arquivadas" else "Minhas Visitas",
                                 style = MaterialTheme.typography.labelLarge,
@@ -483,4 +508,5 @@ enum class Destination(
     MAIN("home", "", Icons.Default.Home, ""),
     MAP("map", "", Icons.Default.LocationOn, ""),
     DOWNLOADED_MAPS("downloaded_map", "", Icons.Default.Download, ""),
+    TEMPLATES("templates", "", Icons.Default.ListAlt, "")
 }

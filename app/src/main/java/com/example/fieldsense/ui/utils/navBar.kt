@@ -24,12 +24,15 @@ import androidx.navigation.compose.rememberNavController
 import com.example.fieldsense.Destination
 import com.example.fieldsense.MainScreen
 import com.example.fieldsense.ui.attachments.AttachmentViewModelFactory
+import com.example.fieldsense.ui.checklist.ChecklistViewModelFactory
 import com.example.fieldsense.ui.map.DownloadedMapsScreen
 import com.example.fieldsense.ui.map.LocationViewModel
 import com.example.fieldsense.ui.map.MapScreen
 import com.example.fieldsense.ui.map.OfflineMapScreen
 import com.example.fieldsense.ui.notes.NoteViewModelFactory
 import com.example.fieldsense.ui.visits.VisitAreaDrawingScreen
+import com.example.fieldsense.ui.templates.TemplateViewModelFactory
+import com.example.fieldsense.ui.templates.TemplatesScreen
 import com.example.fieldsense.ui.visits.VisitViewModel
 import org.maplibre.compose.offline.OfflineManager
 import org.maplibre.compose.offline.rememberOfflineManager
@@ -45,7 +48,9 @@ fun AppNavHost(
     offlineManager: OfflineManager,
     onLogout: () -> Unit,
     noteFactory: NoteViewModelFactory,
-    attachmentFactory: AttachmentViewModelFactory
+    attachmentFactory: AttachmentViewModelFactory,
+    templateFactory: TemplateViewModelFactory,
+    checklistFactory: ChecklistViewModelFactory
 ) {
     NavHost(
         navController,
@@ -61,11 +66,14 @@ fun AppNavHost(
                         onLogout = onLogout,
                         noteFactory =  noteFactory,
                         attachmentFactory = attachmentFactory,
+                        templateFactory = templateFactory,
+                        checklistFactory = checklistFactory,
                         onNavigateToDrawing = { visitId ->
                             navController.navigate("draw_area/$visitId")
                         })
                     Destination.MAP -> MapScreen(Modifier, locationViewModel, onNavigateToOfflineMap = {navController.navigate("offline_map")})
                     Destination.DOWNLOADED_MAPS -> DownloadedMapsScreen(offlineManager)
+                    Destination.TEMPLATES -> TemplatesScreen(templateFactory)
                 }
             }
         }
@@ -105,7 +113,9 @@ fun NavigationBar(
     locationViewModel: LocationViewModel,
     onLogout: () -> Unit,
     noteFactory: NoteViewModelFactory,
-    attachmentFactory: AttachmentViewModelFactory
+    attachmentFactory: AttachmentViewModelFactory,
+    templateFactory: TemplateViewModelFactory,
+    checklistFactory: ChecklistViewModelFactory
 ) {
     val offlineManager = rememberOfflineManager()
     val navController = rememberNavController()
@@ -155,7 +165,9 @@ fun NavigationBar(
                 offlineManager,
                 onLogout,
                 noteFactory,
-                attachmentFactory
+                attachmentFactory,
+                templateFactory,
+                checklistFactory
             )
         }
 

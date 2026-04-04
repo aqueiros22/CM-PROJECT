@@ -29,15 +29,21 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.fieldsense.BuildConfig
 import com.example.fieldsense.R
 import com.example.fieldsense.data.model.Attachment
 import com.example.fieldsense.data.model.Note
 import com.example.fieldsense.data.model.Visit
+import com.example.fieldsense.data.model.VisitChecklist
 import com.example.fieldsense.ui.attachments.AttachmentDetailScreen
 import com.example.fieldsense.ui.attachments.AttachmentViewModel
+import com.example.fieldsense.ui.checklist.ChecklistFillScreen
+import com.example.fieldsense.ui.checklist.ChecklistViewModel
 import com.example.fieldsense.ui.notes.NoteDetailScreen
 import com.example.fieldsense.ui.notes.NoteViewModel
+import com.example.fieldsense.ui.templates.TemplateViewModel
+import com.example.fieldsense.ui.templates.TemplateViewModelFactory
 import com.example.fieldsense.ui.utils.DeleteConfirmationDialog
 import kotlinx.serialization.json.JsonObject
 import org.maplibre.compose.camera.CameraPosition
@@ -64,6 +70,8 @@ fun VisitDetailScreen(
     visitViewModel: VisitViewModel,
     noteViewModel: NoteViewModel,
     attachmentViewModel: AttachmentViewModel,
+    checklistViewModel: ChecklistViewModel,
+    templateFactory: TemplateViewModelFactory,
     onBack: () -> Unit,
     onNavigateToDrawing: (Int) -> Unit = {}
 ) {
@@ -78,6 +86,15 @@ fun VisitDetailScreen(
 
     var selectedAttachmentId by rememberSaveable { mutableStateOf<Int?>(null) }
     val selectedAttachment = attachments.find { it.id == selectedAttachmentId }
+
+    val checklists by checklistViewModel.getChecklistsForVisit(visit.id).collectAsState()
+    var showChecklistPicker by rememberSaveable { mutableStateOf(false) }
+
+    var selectedChecklistId by rememberSaveable { mutableStateOf<Int?>(null) }
+    val selectedChecklist = checklists.find { it.id == selectedChecklistId }
+
+    val templateViewModel: TemplateViewModel = viewModel(factory = templateFactory)
+    val templates by templateViewModel.templates.collectAsState()
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
@@ -124,6 +141,14 @@ fun VisitDetailScreen(
         AttachmentDetailScreen(
             attachment = selectedAttachment,
             onBack = { selectedAttachmentId = null }
+        )
+        return
+    }
+    if (selectedChecklist != null) {
+        ChecklistFillScreen(
+            checklist = selectedChecklist,
+            checklistViewModel = checklistViewModel,
+            onBack = { selectedChecklistId = null }
         )
         return
     }
@@ -277,6 +302,46 @@ fun VisitDetailScreen(
                     )
                 }
             }
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Checklists",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    FilledTonalIconButton(
+                        onClick = { showChecklistPicker = true },
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = Color(0xF0E8F5E9)
+                        )
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = "Nova Checklist", tint = Color.Black)
+                    }
+                }
+            }
+
+            if (checklists.isEmpty()) {
+                item {
+                    Text(
+                        "Nenhuma checklist associada.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            } else {
+                items(checklists) { checklist ->
+                    ChecklistCard(
+                        checklist = checklist,
+                        onClick = { selectedChecklistId = checklist.id },
+                        onDelete = { checklistViewModel.deleteChecklist(checklist) }
+                    )
+                }
+            }
 
             // Notes Section
             item {
@@ -327,6 +392,19 @@ fun VisitDetailScreen(
                 onConfirm = { updatedVisit ->
                     visitViewModel.updateVisit(updatedVisit)
                     showEditVisitDialog = false
+                }
+            )
+        }
+        if (showChecklistPicker) {
+            TemplatePickerDialog(
+                templates = templates,
+                onDismiss = { showChecklistPicker = false },
+                onConfirm = { template ->
+                    checklistViewModel.createChecklistFromTemplate(
+                        visitId = visit.id,
+                        template = template
+                    )
+                    showChecklistPicker = false
                 }
             )
         }
@@ -764,6 +842,118 @@ fun AddNoteDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        }
+    )
+}
+
+@Composable
+fun ChecklistCard(
+    checklist: VisitChecklist,
+    onClick: () -> Unit,
+    onDelete: () -> Unit
+) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        DeleteConfirmationDialog(
+            title = "Apagar Checklist",
+            message = "Tem a certeza que deseja apagar \"${checklist.templateName}\"?",
+            onConfirm = { onDelete(); showDeleteDialog = false },
+            onDismiss = { showDeleteDialog = false }
+        )
+    }
+
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Filled.Checklist,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    checklist.templateName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    checklist.date,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(
+                onClick = { showDeleteDialog = true },
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                ),
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(Icons.Filled.Delete, contentDescription = "Apagar", modifier = Modifier.size(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun TemplatePickerDialog(
+    templates: List<com.example.fieldsense.data.model.Template>,
+    onDismiss: () -> Unit,
+    onConfirm: (com.example.fieldsense.data.model.Template) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Escolher Template", fontWeight = FontWeight.Bold) },
+        text = {
+            if (templates.isEmpty()) {
+                Text("Nenhum template disponível. Cria um template primeiro.")
+            } else {
+                LazyColumn {
+                    items(templates) { template ->
+                        Card(
+                            onClick = { onConfirm(template) },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(template.name, fontWeight = FontWeight.Medium)
+                                if (template.description.isNotBlank()) {
+                                    Text(
+                                        template.description,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
         }
     )
 }
