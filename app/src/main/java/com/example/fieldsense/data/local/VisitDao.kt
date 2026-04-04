@@ -11,8 +11,11 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface VisitDao {
 
-    @Query("SELECT * FROM visits WHERE userId = :userId ORDER BY id DESC")
-    fun getVisitsByUser(userId: String): Flow<List<Visit>>
+    @Query("SELECT * FROM visits WHERE userId = :userId AND isArchived = 0 ORDER BY id DESC")
+    fun getActiveVisitsByUser(userId: String): Flow<List<Visit>>
+
+    @Query("SELECT * FROM visits WHERE userId = :userId AND isArchived = 1 ORDER BY id DESC")
+    fun getArchivedVisitsByUser(userId: String): Flow<List<Visit>>
 
     @Query("SELECT * FROM visits ORDER BY id DESC")
     fun getAllVisits(): Flow<List<Visit>>

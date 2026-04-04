@@ -9,7 +9,7 @@ import com.example.fieldsense.data.model.Visit
 import com.example.fieldsense.data.model.Attachment
 import com.example.fieldsense.data.local.AttachmentDao
 
-@Database(entities = [Visit::class, Note::class, Attachment::class], version = 6, exportSchema = false)
+@Database(entities = [Visit::class, Note::class, Attachment::class], version = 8, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun visitDao(): VisitDao

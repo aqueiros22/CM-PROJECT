@@ -1,48 +1,38 @@
 package com.example.fieldsense.ui.map
 
+import android.Manifest
 import android.content.Context
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import android.Manifest
-import android.util.Log
-import android.widget.Toast
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.SearchBar
-import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import com.example.fieldsense.BuildConfig
 import com.example.fieldsense.MainActivity
 import com.example.fieldsense.location.LocationHelper
-import com.example.fieldsense.ui.theme.Shapes
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
@@ -52,23 +42,20 @@ import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.compose.sources.GeoJsonData
 import org.maplibre.compose.sources.rememberGeoJsonSource
 import org.maplibre.compose.style.BaseStyle
+import org.maplibre.compose.util.ClickResult
 import org.maplibre.spatialk.geojson.Feature
 import org.maplibre.spatialk.geojson.FeatureCollection
 import org.maplibre.spatialk.geojson.Point
 import org.maplibre.spatialk.geojson.Position
-import kotlinx.coroutines.launch
-import kotlin.collections.get
 
 @Composable
 fun MapScreen(modifier: Modifier = Modifier, viewModel: LocationViewModel, onNavigateToOfflineMap: () -> Unit) {
-
     val context = LocalContext.current
     val myLocationHelper = LocationHelper(context)
     DisplayLocation(modifier = modifier, myLocationHelper = myLocationHelper, viewModel, context = context, onNavigateToOfflineMap = onNavigateToOfflineMap)
 }
 
-
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DisplayLocation(
     modifier: Modifier,
@@ -77,7 +64,9 @@ fun DisplayLocation(
     context: Context,
     onNavigateToOfflineMap: () -> Unit
 ) {
-    val location = viewModel.location.value
+    val location by viewModel.location
+    val isFetching = viewModel.isFetchingLocation
+
     val cameraState = rememberCameraState(
         firstPosition = CameraPosition(
             target = Position(-8.6291, 41.1579),
@@ -86,10 +75,27 @@ fun DisplayLocation(
     )
     val coroutineScope = rememberCoroutineScope()
 
+    // Flag to track if we should animate to the next received location
+    var shouldAnimateToLocation by remember { mutableStateOf(false) }
+
+    // Effect to automatically move camera when location is updated
+    LaunchedEffect(location) {
+        if (shouldAnimateToLocation && location != null) {
+            cameraState.animateTo(
+                CameraPosition(
+                    target = Position(location!!.longitude, location!!.latitude),
+                    zoom = 15.0
+                )
+            )
+            shouldAnimateToLocation = false
+        }
+    }
+
     val textFieldState: TextFieldState = rememberTextFieldState()
     val onSearch: (String) -> Unit =  { query -> viewModel.search(query) }
     val searchResults: List<String> = viewModel.searchResults.map { it.placeName }
-    val onResultSelected = { placeName: String ->
+
+    val onResultSelected: (String) -> Unit = { placeName: String ->
         val feature = viewModel.searchResults.find { it.placeName == placeName }
         feature?.let {
             val longitude = feature.center[0]
@@ -114,6 +120,8 @@ fun DisplayLocation(
                 &&
                 permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
             ) {
+                shouldAnimateToLocation = true
+                viewModel.startFetchingLocation()
                 myLocationHelper.requestLocationUpdates(viewModel= viewModel)
             } else {
                 val rationaleRequired = ActivityCompat.shouldShowRequestPermissionRationale(
@@ -129,21 +137,16 @@ fun DisplayLocation(
                         " Esta funcionalidade requer permissões de localização",
                         Toast.LENGTH_LONG).show()
                 } else {
-                    // need to set permission from settings
                     Toast.makeText(context,
-                        "Ative as permissões de localização nas definições",
+                        "Por favor, ative as permissões de localização nas definições do telefone",
                         Toast.LENGTH_LONG).show()
                 }
-
-
             }
         })
 
-
     Box(modifier = modifier.fillMaxSize()){
-
         MaplibreMap(
-            modifier = Modifier,
+            modifier = Modifier.fillMaxSize(),
             baseStyle = BaseStyle.Uri("https://api.maptiler.com/maps/hybrid-v4/style.json?key=${BuildConfig.MAPTILER_API_KEY}"),
             cameraState = cameraState
         ) {
@@ -158,73 +161,111 @@ fun DisplayLocation(
                         )
                     )
                 )
-                // 2. Outer pulsing ring
                 CircleLayer(
                     id = "user-location-ring",
                     source = locationSource,
                     radius = const(18.dp),
-                    color = const(Color(0x554285F4)),  // semi-transparent blue
+                    color = const(Color(0x554285F4)),
                     strokeWidth = const(0.dp)
                 )
             }
         }
 
-    }
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Search Bar Overlay
+            SimpleSearchBar(
+                textFieldState,
+                onSearch,
+                searchResults,
+                viewModel = viewModel,
+                onResultSelected = onResultSelected
+            )
 
-    SimpleSearchBar(textFieldState, onSearch, searchResults, viewModel = viewModel, onResultSelected = onResultSelected)
-    Column( modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.Bottom
-        ) {
-        if (location != null) {
-            Text("Location: lat: ${location.latitude}, long: ${location.longitude}")
-        } else {
-            Text("Location not available")
-        }
-        Row(
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.Bottom,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 40.dp)
-        ) {
-            Button(shape = Shapes.medium, onClick = {
-                if (myLocationHelper.hasLocationPermission(context)){
-                    // permission granter -> update location
-                    myLocationHelper.requestLocationUpdates(viewModel= viewModel)
-                    location?.let {
-                        coroutineScope.launch {
-                            cameraState.animateTo(
-                                CameraPosition(
-                                    target = Position(it.longitude, it.latitude),
-                                    zoom = 15.0
-                                )
+            // Location Info Card (Center below search)
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                Surface(
+                    color = Color.Black.copy(alpha = 0.7f),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        if (isFetching) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("A obter localização...", color = Color.White, fontSize = 14.sp)
+                        } else if (location != null) {
+                            Icon(Icons.Default.GpsFixed, null, modifier = Modifier.size(16.dp), tint = Color(0xFF4CAF50))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "lat: ${"%.4f".format(location!!.latitude)}, long: ${"%.4f".format(location!!.longitude)}",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        } else {
+                            Text("Localização indisponível", color = Color.White, fontSize = 14.sp)
                         }
                     }
                 }
-                else {
-                    // Request location permission
-                    requestPermissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.ACCESS_FINE_LOCATION,
-                            Manifest.permission.ACCESS_COARSE_LOCATION
-                        )
-                    )
-                }
-
-            }) {
-                Text("Minha localização")
-            }
-            Button( shape = Shapes.medium, onClick = onNavigateToOfflineMap) {
-                Text(text = "Mapas offline")
             }
         }
 
+        // Bottom Controls
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.Bottom
+        ) {
+            // My Location FAB
+            FloatingActionButton(
+                onClick = {
+                    if (myLocationHelper.hasLocationPermission(context)){
+                        shouldAnimateToLocation = true
+                        viewModel.startFetchingLocation()
+                        myLocationHelper.requestLocationUpdates(viewModel= viewModel)
+                    }
+                    else {
+                        requestPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
+                        )
+                    }
+                },
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary,
+                shape = CircleShape,
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                if (isFetching) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Default.MyLocation, contentDescription = "Minha Localização")
+                }
+            }
 
-
-
-
+            Button(
+                onClick = onNavigateToOfflineMap,
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Icon(Icons.Default.Download, null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Mapas Offline", fontWeight = FontWeight.Bold)
+            }
+        }
     }
 }
 
@@ -234,16 +275,16 @@ fun SimpleSearchBar(
     textFieldState: TextFieldState,
     onSearch: (String) -> Unit,
     searchResults: List<String>,
-    onResultSelected: (String) -> Any,
+    onResultSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LocationViewModel,
 ) {
-    // Controls expansion state of the search bar
     var expanded by rememberSaveable{ mutableStateOf(false)}
 
     Box(
         modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .padding(16.dp)
             .semantics { isTraversalGroup = true }
     ) {
         SearchBar(
@@ -260,17 +301,26 @@ fun SimpleSearchBar(
                     onSearch = {
                         viewModel.clearResults()
                         onSearch(textFieldState.text.toString())
-                        Log.d("SearchBar", "Search results: $searchResults")
                     },
                     expanded = expanded,
                     onExpandedChange = { expanded = it },
-                    placeholder = { Text("Search") }
+                    placeholder = { Text("Pesquisar local...") },
+                    leadingIcon = { Icon(Icons.Default.Search, null) },
+                    trailingIcon = {
+                        if (textFieldState.text.isNotEmpty()) {
+                            IconButton(onClick = { textFieldState.edit { replace(0, length, "") } }) {
+                                Icon(Icons.Default.Clear, null)
+                            }
+                        }
+                    }
                 )
             },
             expanded = expanded,
             onExpandedChange = { expanded = it },
+            colors = SearchBarDefaults.colors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            )
         ) {
-            // Display search results in a scrollable column
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 searchResults.forEach { result ->
                     ListItem(
@@ -279,7 +329,6 @@ fun SimpleSearchBar(
                             .clickable {
                                 textFieldState.edit { replace(0, length, result) }
                                 expanded = false
-
                                 onResultSelected(result)
                             }
                             .fillMaxWidth()

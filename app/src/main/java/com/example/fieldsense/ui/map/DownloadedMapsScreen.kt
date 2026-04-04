@@ -1,6 +1,7 @@
 package com.example.fieldsense.ui.map
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -86,6 +88,7 @@ fun DownloadedMapsScreen(
 
         }
     }
+    val context = LocalContext.current
 
     //val currentCenter = center
     if (centerLat != null && centerLng != null) {
@@ -119,7 +122,7 @@ fun DownloadedMapsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { packToDelete = null }) {
-                    Text("Cancel")
+                    Text("Cancelar")
                 }
             }
         )
@@ -136,7 +139,7 @@ fun DownloadedMapsScreen(
             ) {
 
                 Text(
-                    text = "Downloaded Maps",
+                    text = "Mapas transferidos",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -185,12 +188,30 @@ fun DownloadedMapsScreen(
                             onPreview = { onPreviewPack(pack) },
                             onDelete = { packToDelete = pack },
                             onUpdateMetadata = { newName, selectedPack ->
+                                Log.d("UpdateMetadata", "selectedPackMeta: ${selectedPack.metadata?.decodeToString()}")
 
-                                coroutineScope.launch {
-                                    val json = """{ "name": "$newName" }"""
-                                    val bytes = json.toByteArray(Charsets.UTF_8)
-                                    Log.d("Rename", "bytes: $bytes")
-                                    selectedPack.setMetadata(bytes)
+                                val existingNames = offlineManager.packs.map { pack ->
+                                    try {
+                                        val json = pack.metadata?.decodeToString()
+                                        JSONObject(json ?: "").optString("name", "")
+                                    } catch (e: Exception) { "" }
+                                }
+                                Log.d("UpdateMetadata", "existingNames: $existingNames")
+
+                                if (existingNames.contains(newName)) {
+                                    Log.e("UpdateMetadata", "Error: O nome '$newName' já existe.")
+                                    Toast.makeText(context, "O nome '$newName' já existe.", Toast.LENGTH_SHORT).show()
+                                // You could add a Toast here to inform the user
+
+                                } else {
+                                    Log.d("UpdateMetadata", "Nome único confirmado: $newName")
+                                    coroutineScope.launch {
+                                        val json = """{ "name": "$newName" }"""
+                                        val bytes = json.toByteArray(Charsets.UTF_8)
+                                        Log.d("UpdateMetadata", "bytes: $bytes")
+                                        selectedPack.setMetadata(bytes)
+
+                                    }
                                 }
                             }
                         )
@@ -254,25 +275,31 @@ fun DownloadedMapCard(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            // Name input
-                            TextField(
-                                modifier = Modifier.requiredWidth(220.dp),
-                                value = packName,
-                                onValueChange = {packName = it},
-                                //label = { Text("Nome") }
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions( imeAction = ImeAction.Done),
-                                keyboardActions = KeyboardActions(onDone = {
-                                    onUpdateMetadata(packName, pack)
-                                    keyboardController?.hide()
+                            val progress = pack.downloadProgress
 
-                                }),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent,
-                                    disabledContainerColor = Color.Transparent
+                            if ((progress is DownloadProgress.Healthy) && (progress.status == DownloadStatus.Complete)) {
+                                // Name input
+                                TextField(
+                                    modifier = Modifier.requiredWidth(220.dp),
+                                    value = packName,
+                                    onValueChange = {packName = it},
+                                    //label = { Text("Nome") }
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions( imeAction = ImeAction.Done),
+                                    keyboardActions = KeyboardActions(onDone = {
+                                        onUpdateMetadata(packName, pack)
+                                        keyboardController?.hide()
+
+                                    }),
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = Color.Transparent,
+                                        unfocusedContainerColor = Color.Transparent,
+                                        disabledContainerColor = Color.Transparent
+                                    )
                                 )
-                            )
+                            } else {
+                                Text("$packName", fontSize = 16.sp)
+                            }
 
                             Spacer(modifier = Modifier.weight(1f))
 

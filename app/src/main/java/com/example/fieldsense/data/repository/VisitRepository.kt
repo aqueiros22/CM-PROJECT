@@ -19,7 +19,9 @@ class VisitRepository(
 ) {
     val allVisits: Flow<List<Visit>> = visitDao.getAllVisits()
 
-    fun getVisitsByUser(userId: String): Flow<List<Visit>> = visitDao.getVisitsByUser(userId)
+    fun getVisitsByUser(userId: String): Flow<List<Visit>> = visitDao.getActiveVisitsByUser(userId)
+
+    fun getArchivedVisits(userId: String): Flow<List<Visit>> = visitDao.getArchivedVisitsByUser(userId)
 
     suspend fun insert(visit: Visit) {
         val generatedId = visitDao.insertVisit(visit)

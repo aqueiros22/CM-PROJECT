@@ -1,16 +1,27 @@
 package com.example.fieldsense.ui.map
 
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -26,11 +37,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.fieldsense.BuildConfig
 import com.example.fieldsense.ui.theme.Shapes
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.compose.layers.FillLayer
 import org.maplibre.compose.map.MaplibreMap
@@ -45,6 +58,9 @@ import org.maplibre.compose.sources.GeoJsonData
 import org.maplibre.compose.sources.rememberGeoJsonSource
 import org.maplibre.compose.style.BaseStyle
 import org.maplibre.compose.util.ClickResult
+import org.maplibre.spatialk.geojson.Feature
+import org.maplibre.spatialk.geojson.FeatureCollection
+import org.maplibre.spatialk.geojson.Point
 import org.maplibre.spatialk.geojson.Position
 
 
@@ -106,16 +122,38 @@ fun BoundingBoxOverlay(state: BoundingBoxState) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OfflineMapScreen(onBack: () -> Unit, offlineManager: OfflineManager, viewModel: BoundingBoxViewModel = viewModel()) {
+fun OfflineMapScreen(
+    onBack: () -> Unit,
+    offlineManager: OfflineManager,
+    viewModel: BoundingBoxViewModel = viewModel(),
+    locationViewModel: LocationViewModel
+) {
     val context = LocalContext.current
     val state = viewModel.state
+    val userLocation by locationViewModel.location
+
     val cameraState = rememberCameraState(
         firstPosition = CameraPosition(
-            target = Position( -8.6291, 41.1579),
-            zoom = 5.0
+            target = userLocation?.let { Position(it.longitude, it.latitude) } ?: Position(-9.1399, 38.7169),
+            zoom = if (userLocation != null) 13.0 else 5.0
         )
     )
     val coroutineScope = rememberCoroutineScope()
+
+    // Flag to ensure we only auto-center once when the screen opens
+    var hasCenteredInitially by remember { mutableStateOf(false) }
+
+    LaunchedEffect(userLocation) {
+        if (!hasCenteredInitially && userLocation != null) {
+            cameraState.animateTo(
+                CameraPosition(
+                    target = Position(userLocation!!.longitude, userLocation!!.latitude),
+                    zoom = 13.0
+                )
+            )
+            hasCenteredInitially = true
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -132,209 +170,157 @@ fun OfflineMapScreen(onBack: () -> Unit, offlineManager: OfflineManager, viewMod
                 }
             )
         }
-    ) { paddingValues ->
+    )
+    { paddingValues ->
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-
-            // Map (background)
+        Box(modifier = Modifier
+            .fillMaxSize()
+        )
+        {
             MaplibreMap(
-                modifier = Modifier.fillMaxSize(),
-                baseStyle = BaseStyle.Uri(
-                    "https://api.maptiler.com/maps/hybrid-v4/style.json?key=${BuildConfig.MAPTILER_API_KEY}"
-                ),
+                modifier = Modifier,
+                baseStyle = BaseStyle.Uri("https://api.maptiler.com/maps/hybrid-v4/style.json?key=${BuildConfig.MAPTILER_API_KEY}"),
                 cameraState = cameraState,
-                onMapClick = { point: Position, _ ->
+                onMapClick = { point: Position, screenPoint: DpOffset ->
                     val latLng = LatLng(point.latitude, point.longitude)
                     viewModel.onMapTap(latLng)
                     ClickResult.Pass
                 }
             ) {
                 BoundingBoxOverlay(state)
+
+                // Show user location marker if available
+                userLocation?.let { latLng ->
+                    val locationSource = rememberGeoJsonSource(
+                        data = GeoJsonData.Features(
+                            FeatureCollection(
+                                Feature(
+                                    geometry = Point(Position(latLng.longitude, latLng.latitude)),
+                                    properties = JsonObject(content = emptyMap())
+                                )
+                            )
+                        )
+                    )
+                    CircleLayer(
+                        id = "offline-user-location",
+                        source = locationSource,
+                        radius = const(10.dp),
+                        color = const(Color(0xFF4285F4)),
+                        strokeWidth = const(2.dp),
+                        strokeColor = const(Color.White)
+                    )
+                }
             }
 
-            // Top hint card
-            val hint = when {
-                state.point1 == null -> "Toque para definir o primeiro canto"
-                state.point2 == null -> "Toque para definir o segundo canto"
-                else -> "Área pronta — toque no mapa para reiniciar"
-            }
-
+            // UI controls overlay
             Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .fillMaxHeight(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.padding(paddingValues).fillMaxHeight()
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
+                val hint = when {
+                    state.point1 == null -> "Toque para definir o primeiro canto"
+                    state.point2 == null -> "Toque para definir o segundo canto"
+                    else -> "Caixa de mapa pronta - Toque no mapa para reiniciar"
+                }
+
                 Surface(
-                    modifier = Modifier
-                        .padding(16.dp),
                     shape = Shapes.medium,
                     tonalElevation = 4.dp,
-                    shadowElevation = 6.dp
+                    shadowElevation = 6.dp,
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.padding(top = 10.dp)
                 ) {
                     Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(10.dp)
                     ) {
                         Icon(
-                            Icons.Default.Lightbulb,
+                            imageVector = Icons.Default.Lightbulb,
                             contentDescription = null,
-                            modifier = Modifier.padding(end = 8.dp)
+                            modifier = Modifier.padding(end = 5.dp)
                         )
                         Text(
                             text = hint,
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
 
-                // Bottom actions
-                if (state.isComplete) {
-                    Row(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        //horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-
-                        Button(
-                            shape = Shapes.medium,
-                            onClick = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    // Center on Me Button
+                    SmallFloatingActionButton(
+                        onClick = {
+                            userLocation?.let {
                                 coroutineScope.launch {
-                                    val pack = offlineManager.create(
-                                        definition = OfflinePackDefinition.TilePyramid(
-                                            styleUrl = "https://api.maptiler.com/maps/hybrid-v4/style.json?key=${BuildConfig.MAPTILER_API_KEY}",
-                                            bounds = state.toBoundingBox() ?: return@launch,
-                                            minZoom = 10,
-                                            maxZoom = 16
+                                    cameraState.animateTo(
+                                        CameraPosition(
+                                            target = Position(it.longitude, it.latitude),
+                                            zoom = 13.0
                                         )
                                     )
-                                    offlineManager.resume(pack)
                                 }
                             }
-                        ) {
-                            Text("Download")
+                        },
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        shape = CircleShape,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    ) {
+                        Icon(Icons.Default.MyLocation, contentDescription = "Minha Localização")
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (state.isComplete) {
+                            Button(
+                                shape = Shapes.medium,
+                                onClick = {
+                                    coroutineScope.launch {
+                                        val pack = offlineManager.create(
+                                            definition = OfflinePackDefinition.TilePyramid(
+                                                styleUrl = "https://api.maptiler.com/maps/hybrid-v4/style.json?key=${BuildConfig.MAPTILER_API_KEY}",
+                                                bounds = state.toBoundingBox() ?: return@launch,
+                                                minZoom = 10,
+                                                maxZoom = 16
+                                            )
+                                        )
+                                        offlineManager.resume(pack)
+                                        Toast.makeText(
+                                            context,
+                                            "A iniciar transferência...",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.Default.Download, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Transferir")
+                            }
+
+                            Button(
+                                shape = Shapes.medium,
+                                onClick = { viewModel.reset() },
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                            ) {
+                                Text("Repor")
+                            }
                         }
-
-                        Button(
-                            shape = Shapes.medium,
-                            onClick = { viewModel.reset() }
-                        ) {
-                            Text("Reset")
-                        }
                     }
                 }
             }
-
         }
     }
-
-/*    Box(modifier = Modifier.fillMaxSize()) {
-    MaplibreMap(
-        modifier = Modifier,
-        baseStyle = BaseStyle.Uri("https://api.maptiler.com/maps/hybrid-v4/style.json?key=${BuildConfig.MAPTILER_API_KEY}"),
-        cameraState = cameraState,
-        onMapClick = {point: Position, screenPoint: DpOffset ->
-            Toast.makeText(context, "Mapa clicado nas coordenadas: $point", Toast.LENGTH_SHORT).show()
-            val latLng = LatLng(point.latitude, point.longitude)
-            viewModel.onMapTap(latLng)
-            ClickResult.Pass
-        }
-    ) {
-        BoundingBoxOverlay(state)
-    }
-
-    // UI controls overlay
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .align(Alignment.Center)
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween // Pushes hint to top, buttons to bottom
-    ) {
-        val hint = when {
-            state.point1 == null -> "Toque para definir o primeiro canto do mapa a transferir"
-            state.point2 == null -> "Toque para definir o segundo canto do mapa a transferir"
-            else -> "Caixa de mapa pronta - Toque no mapa para reiniciar"
-        }
-        Column(
-            verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.Start,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp)
-
-        ) {
-            Button(onClick = onBack, shape = Shapes.medium) {
-                Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "Back")
-            }
-            Surface(
-                shape = Shapes.medium,
-                tonalElevation = 4.dp,
-                shadowElevation = 6.dp,
-                color = MaterialTheme.colorScheme.surface,
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(10.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.Lightbulb,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 5.dp)
-                    )
-                    Text(
-                        text = hint,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-            }
-        }
-
-
-        //Spacer(Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.padding(top = 30.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (state.isComplete) {
-                Log.d("BoundingBoxState", "isComplete: ${state.isComplete}")
-                Button(shape = Shapes.medium, onClick = {
-                    coroutineScope.launch {
-                        // 1. Create the pack (starts paused)
-                        val pack = offlineManager.create(
-                            definition = OfflinePackDefinition.TilePyramid(
-                                styleUrl = "https://api.maptiler.com/maps/hybrid-v4/style.json?key=${BuildConfig.MAPTILER_API_KEY}",
-                                bounds = state.toBoundingBox() ?: return@launch,
-                                minZoom = 10,
-                                maxZoom = 16
-                            )
-                        )
-                        // 2. Start the download
-                        offlineManager.resume(pack)
-
-                    }
-                }) {
-                    Text("Download")
-                }
-                if (state.point1 != null) {
-                    Button(shape = Shapes.medium, onClick = { viewModel.reset() }) {
-                        Text("Reset")
-                    }
-                }
-
-            }
-        }
-
-
-    }
-
-    }*/
 }
