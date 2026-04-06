@@ -33,7 +33,6 @@ import com.example.fieldsense.ui.map.LocationViewModel
 import com.example.fieldsense.ui.map.MapScreen
 import com.example.fieldsense.ui.map.OfflineMapScreen
 import com.example.fieldsense.ui.notes.NoteViewModelFactory
-import com.example.fieldsense.ui.visits.VisitAreaDrawingScreen
 import com.example.fieldsense.ui.templates.TemplateViewModelFactory
 import com.example.fieldsense.ui.templates.TemplatesScreen
 import com.example.fieldsense.ui.visits.VisitViewModel
