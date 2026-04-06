@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -508,5 +509,5 @@ enum class Destination(
     MAIN("home", "", Icons.Default.Home, ""),
     MAP("map", "", Icons.Default.LocationOn, ""),
     DOWNLOADED_MAPS("downloaded_map", "", Icons.Default.Download, ""),
-    TEMPLATES("templates", "", Icons.Default.ListAlt, "")
+    TEMPLATES("templates", "", Icons.AutoMirrored.Filled.ListAlt, "")
 }

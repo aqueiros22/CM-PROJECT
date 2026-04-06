@@ -309,7 +309,7 @@ fun VisitDetailScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Checklists",
+                        "Formulários",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
@@ -320,7 +320,7 @@ fun VisitDetailScreen(
                             containerColor = Color(0xF0E8F5E9)
                         )
                     ) {
-                        Icon(Icons.Filled.Add, contentDescription = "Nova Checklist", tint = Color.Black)
+                        Icon(Icons.Filled.Add, contentDescription = "Novo Formulário", tint = Color.Black)
                     }
                 }
             }
@@ -328,7 +328,7 @@ fun VisitDetailScreen(
             if (checklists.isEmpty()) {
                 item {
                     Text(
-                        "Nenhuma checklist associada.",
+                        "Nenhum formulário associado.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -856,7 +856,7 @@ fun ChecklistCard(
 
     if (showDeleteDialog) {
         DeleteConfirmationDialog(
-            title = "Apagar Checklist",
+            title = "Apagar Formulário",
             message = "Tem a certeza que deseja apagar \"${checklist.templateName}\"?",
             onConfirm = { onDelete(); showDeleteDialog = false },
             onDismiss = { showDeleteDialog = false }
@@ -867,7 +867,7 @@ fun ChecklistCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+        colors = CardDefaults.cardColors(containerColor = Color(0xF0E8F5E9))
     ) {
         Row(
             modifier = Modifier.padding(12.dp).fillMaxWidth(),
@@ -875,7 +875,7 @@ fun ChecklistCard(
         ) {
             Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                 modifier = Modifier.size(40.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -883,7 +883,7 @@ fun ChecklistCard(
                         Icons.Filled.Checklist,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -892,7 +892,8 @@ fun ChecklistCard(
                 Text(
                     checklist.templateName,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     checklist.date,
@@ -922,10 +923,10 @@ fun TemplatePickerDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Escolher Template", fontWeight = FontWeight.Bold) },
+        title = { Text("Escolher modelo de formulário", fontWeight = FontWeight.Bold) },
         text = {
             if (templates.isEmpty()) {
-                Text("Nenhum template disponível. Cria um template primeiro.")
+                Text("Nenhum modelo de formulário disponível. Crie um primeiro.")
             } else {
                 LazyColumn {
                     items(templates) { template ->

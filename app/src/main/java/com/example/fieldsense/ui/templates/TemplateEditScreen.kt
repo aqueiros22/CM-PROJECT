@@ -12,6 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.fieldsense.data.model.Question
@@ -41,14 +43,26 @@ fun TemplateEditScreen(
         questionsLoaded = true
     }
 
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val canSave = name.isNotBlank() && questions.isNotEmpty() && questions.all { it.text.isNotBlank() }
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 title = {
-                    Text(
-                        if (isEditing) "Editar Template" else "Novo Template",
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Column {
+                        Text(
+                            if (isEditing) "Editar Formulário" else "Novo Formulário",
+                            fontWeight = FontWeight.ExtraBold,
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                        Text(
+                            if (isEditing) "Modifica as perguntas" else "Define as perguntas",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -70,18 +84,24 @@ fun TemplateEditScreen(
                             }
                             onBack()
                         },
-                        enabled = name.isNotBlank() &&
-                                questions.isNotEmpty() &&
-                                questions.all { it.text.isNotBlank() }
+                        enabled = canSave
                     ) {
-                        Text("Guardar", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Guardar",
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (canSave) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = Color.White,
+                    scrolledContainerColor = Color(0xF0E8F5E9)
                 )
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -90,30 +110,49 @@ fun TemplateEditScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
-            Text(
-                "Informação",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Nome do Template") },
+            // Informação
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium
-            )
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(containerColor = Color(0xF0E8F5E9))
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "Informação",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Nome do Formulário") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedContainerColor = Color.White.copy(alpha = 0.5f)
+                        )
+                    )
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text("Descrição (opcional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedContainerColor = Color.White.copy(alpha = 0.5f)
+                        )
+                    )
+                }
+            }
 
-            OutlinedTextField(
-                value = description,
-                onValueChange = { description = it },
-                label = { Text("Descrição (opcional)") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium
-            )
-
+            // Cabeçalho de perguntas
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -121,10 +160,11 @@ fun TemplateEditScreen(
             ) {
                 Text(
                     "Perguntas",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
-                IconButton(
+                FilledTonalIconButton(
                     onClick = {
                         questions = questions + Question(
                             templateId = template?.id ?: -1,
@@ -132,19 +172,18 @@ fun TemplateEditScreen(
                             type = QuestionType.CHECKBOX,
                             order = questions.size
                         )
-                    }
-                ) {
-                    Icon(
-                        Icons.Filled.Add,
-                        contentDescription = "Adicionar Pergunta",
-                        tint = MaterialTheme.colorScheme.primary
+                    },
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = Color(0xF0E8F5E9)
                     )
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = "Adicionar Pergunta", tint = Color.Black)
                 }
             }
 
             if (questions.isEmpty()) {
                 Text(
-                    if (!questionsLoaded) "A carregar perguntas..."
+                    if (isEditing && !questionsLoaded) "A carregar perguntas..."
                     else "Nenhuma pergunta ainda. Clica '+' para adicionar.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium
@@ -162,9 +201,7 @@ fun TemplateEditScreen(
                         QuestionEditor(
                             question = question,
                             onUpdate = { updated ->
-                                questions = questions.toMutableList().also {
-                                    it[index] = updated
-                                }
+                                questions = questions.toMutableList().also { it[index] = updated }
                             },
                             onDelete = {
                                 questions = questions
@@ -191,8 +228,8 @@ fun QuestionEditor(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = Color(0xF0E8F5E9))
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
@@ -208,13 +245,24 @@ fun QuestionEditor(
                     onValueChange = { onUpdate(question.copy(text = it)) },
                     label = { Text("Pergunta") },
                     modifier = Modifier.weight(1f),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.5f)
+                    )
                 )
-                IconButton(onClick = onDelete) {
+                IconButton(
+                    onClick = onDelete,
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    ),
+                    modifier = Modifier.size(36.dp)
+                ) {
                     Icon(
                         Icons.Filled.Delete,
                         contentDescription = "Remover",
-                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
@@ -233,10 +281,12 @@ fun QuestionEditor(
                     readOnly = true,
                     label = { Text("Tipo de resposta") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(),
-                    shape = MaterialTheme.shapes.medium
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.5f)
+                    )
                 )
                 ExposedDropdownMenu(
                     expanded = expanded,
@@ -245,13 +295,11 @@ fun QuestionEditor(
                     QuestionType.entries.forEach { type ->
                         DropdownMenuItem(
                             text = {
-                                Text(
-                                    when (type) {
-                                        QuestionType.CHECKBOX -> "Checkbox"
-                                        QuestionType.TEXT -> "Texto livre"
-                                        QuestionType.RATING -> "Avaliação (1-5)"
-                                    }
-                                )
+                                Text(when (type) {
+                                    QuestionType.CHECKBOX -> "Checkbox"
+                                    QuestionType.TEXT -> "Texto livre"
+                                    QuestionType.RATING -> "Avaliação (1-5)"
+                                })
                             },
                             onClick = {
                                 onUpdate(question.copy(type = type))

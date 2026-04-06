@@ -220,13 +220,13 @@ fun ChecklistFillScreen(
                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                     )
                     Text(
-                        "Nenhuma pergunta neste template.",
+                        "Nenhuma pergunta neste formulário.",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
                     Text(
-                        "Adiciona perguntas ao template primeiro.",
+                        "Adiciona perguntas ao formulário primeiro.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         textAlign = TextAlign.Center
@@ -418,7 +418,7 @@ private fun CheckboxQuestion(value: String, onValueChange: (String) -> Unit) {
         FilterChip(
             selected = value == "true",
             onClick = { onValueChange(if (value == "true") "" else "true") },
-            label = { Text("Sim / Conforme") },
+            label = { Text("Sim") },
             leadingIcon = if (value == "true") {
                 { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
             } else null,
@@ -431,7 +431,7 @@ private fun CheckboxQuestion(value: String, onValueChange: (String) -> Unit) {
         FilterChip(
             selected = value == "false",
             onClick = { onValueChange(if (value == "false") "" else "false") },
-            label = { Text("Não / Não conforme") },
+            label = { Text("Não") },
             leadingIcon = if (value == "false") {
                 { Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(16.dp)) }
             } else null,
