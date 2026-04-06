@@ -36,6 +36,7 @@ import com.example.fieldsense.data.model.Attachment
 import com.example.fieldsense.data.model.Note
 import com.example.fieldsense.data.model.Visit
 import com.example.fieldsense.data.model.VisitChecklist
+import com.example.fieldsense.ui.areas.AreaViewModel
 import com.example.fieldsense.ui.attachments.AttachmentDetailScreen
 import com.example.fieldsense.ui.attachments.AttachmentViewModel
 import com.example.fieldsense.ui.checklist.ChecklistFillScreen
@@ -72,6 +73,7 @@ fun VisitDetailScreen(
     attachmentViewModel: AttachmentViewModel,
     checklistViewModel: ChecklistViewModel,
     templateFactory: TemplateViewModelFactory,
+    areaViewModel: AreaViewModel,
     onBack: () -> Unit,
     onNavigateToDrawing: (Int) -> Unit = {}
 ) {
@@ -466,7 +468,8 @@ fun VisitAreaMapSection(visit: Visit, onEditArea: () -> Unit) {
                 color = MaterialTheme.colorScheme.onBackground
             )
             TextButton(onClick = onEditArea) {
-                Text(if (points.isEmpty()) stringResource(R.string.define_area) else stringResource(R.string.edit_area))
+                Text(stringResource(R.string.define_area))
+                // Text(if (points.isEmpty()) stringResource(R.string.define_area) else stringResource(R.string.edit_area))
             }
         }
         
@@ -502,53 +505,8 @@ fun VisitAreaMapSection(visit: Visit, onEditArea: () -> Unit) {
                         color = const(MaterialTheme.colorScheme.primary)
                     )
 
-                    // Polygon preview
-                    if (points.size >= 2) {
-                        val geoJson = buildString {
-                            append("""{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[""")
-                            points.forEachIndexed { index, pos ->
-                                if (index > 0) append(",")
-                                append("[${pos.longitude}, ${pos.latitude}]")
-                            }
-                            append(",[${points.first().longitude}, ${points.first().latitude}]")
-                            append("""]]}}""")
-                        }
-
-                        val polygonSource = rememberGeoJsonSource(data = GeoJsonData.JsonString(geoJson))
-
-                        FillLayer(
-                            id = "area-fill-preview",
-                            source = polygonSource,
-                            color = const(Color(0xFF4CAF50)),
-                            opacity = const(0.3f)
-                        )
-                        LineLayer(
-                            id = "area-outline-preview",
-                            source = polygonSource,
-                            color = const(Color(0xFF4CAF50)),
-                            width = const(2.dp)
-                        )
-                    }
                 }
-                
-                if (points.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Surface(
-                            color = Color.Black.copy(alpha = 0.5f),
-                            shape = CircleShape
-                        ) {
-                            Text(
-                                stringResource(R.string.no_area),
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
-                    }
-                }
+
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.example.fieldsense.data.remote
 
 import com.example.fieldsense.data.model.Answer
+import com.example.fieldsense.data.model.Area
 import com.example.fieldsense.data.model.Note
 import com.example.fieldsense.data.model.Visit
 import com.example.fieldsense.data.model.Attachment
@@ -112,5 +113,15 @@ class FirestoreService {
             ?.document(checklist.id.toString())
             ?.delete()
             ?.await()
+    }
+
+    fun getAreasCollection(visitId: Int) =
+        getUserVisitsCollection()?.document(visitId.toString())?.collection("areas")
+    suspend fun uploadArea(area: Area) {
+        getAreasCollection(area.visitId)?.document(area.id.toString())?.set(area)?.await()
+
+    }
+    suspend fun deleteArea(area: Area){
+        getAreasCollection(area.visitId)?.document(area.id.toString())?.delete()?.await()
     }
 }

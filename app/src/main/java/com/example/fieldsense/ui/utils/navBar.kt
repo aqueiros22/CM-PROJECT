@@ -17,12 +17,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.fieldsense.Destination
 import com.example.fieldsense.MainScreen
+import com.example.fieldsense.ui.areas.AreaDrawingScreen
+import com.example.fieldsense.ui.areas.AreaViewModelFactory
 import com.example.fieldsense.ui.attachments.AttachmentViewModelFactory
 import com.example.fieldsense.ui.checklist.ChecklistViewModelFactory
 import com.example.fieldsense.ui.map.DownloadedMapsScreen
@@ -48,6 +51,7 @@ fun AppNavHost(
     offlineManager: OfflineManager,
     onLogout: () -> Unit,
     noteFactory: NoteViewModelFactory,
+    areaFactory: AreaViewModelFactory,
     attachmentFactory: AttachmentViewModelFactory,
     templateFactory: TemplateViewModelFactory,
     checklistFactory: ChecklistViewModelFactory
@@ -64,13 +68,16 @@ fun AppNavHost(
                         email = email,
                         visitViewModel = visitViewModel,
                         onLogout = onLogout,
-                        noteFactory =  noteFactory,
+                        noteFactory = noteFactory,
                         attachmentFactory = attachmentFactory,
                         templateFactory = templateFactory,
                         checklistFactory = checklistFactory,
+                        areaFactory = areaFactory,
                         onNavigateToDrawing = { visitId ->
                             navController.navigate("draw_area/$visitId")
-                        })
+                        }
+
+                    )
                     Destination.MAP -> MapScreen(Modifier, locationViewModel, onNavigateToOfflineMap = {navController.navigate("offline_map")})
                     Destination.DOWNLOADED_MAPS -> DownloadedMapsScreen(offlineManager)
                     Destination.TEMPLATES -> TemplatesScreen(templateFactory)
@@ -87,19 +94,27 @@ fun AppNavHost(
             val visit = visits.find { it.id == visitId } ?: archivedVisits.find { it.id == visitId }
 
             if (visit != null) {
-                VisitAreaDrawingScreen(
+                AreaDrawingScreen(
+                    visit = visit,
+                    onMapAttach = {mapId ->
+                        visitViewModel.updateVisit(visit.copy(map = mapId))
+                    },
+                    onBack = { navController.popBackStack() },
+                    offlineManager = offlineManager,
+                    viewModel = viewModel(factory = areaFactory)
+                )
+/*                VisitAreaDrawingScreen(
                     visit = visit,
                     onSave = { areaStr ->
                         visitViewModel.updateVisit(visit.copy(area = areaStr))
                         navController.popBackStack()
                     },
-                    onMapAttach = {mapName ->
-                        visitViewModel.updateVisit(visit.copy(map = mapName))
-                        navController.popBackStack()
+                    onMapAttach = {mapId ->
+                        visitViewModel.updateVisit(visit.copy(map = mapId))
                     },
                     onBack = { navController.popBackStack() },
                     offlineManager = offlineManager
-                )
+                )*/
             }
         }
     }
@@ -116,7 +131,8 @@ fun NavigationBar(
     noteFactory: NoteViewModelFactory,
     attachmentFactory: AttachmentViewModelFactory,
     templateFactory: TemplateViewModelFactory,
-    checklistFactory: ChecklistViewModelFactory
+    checklistFactory: ChecklistViewModelFactory,
+    areaFactory: AreaViewModelFactory
 ) {
     val offlineManager = rememberOfflineManager()
     val navController = rememberNavController()
@@ -128,10 +144,11 @@ fun NavigationBar(
     Scaffold(
         modifier = modifier,
         bottomBar = {
-            NavigationBar(windowInsets = NavigationBarDefaults.windowInsets,
+            NavigationBar(
+                windowInsets = NavigationBarDefaults.windowInsets,
                 containerColor = lightgreen,
                 contentColor = green,
-                ) {
+            ) {
                 Destination.entries.forEachIndexed { index, destination ->
                     NavigationBarItem(
                         selected = selectedDestination == index,
@@ -166,6 +183,7 @@ fun NavigationBar(
                 offlineManager,
                 onLogout,
                 noteFactory,
+                areaFactory,
                 attachmentFactory,
                 templateFactory,
                 checklistFactory

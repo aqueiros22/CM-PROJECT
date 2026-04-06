@@ -68,6 +68,7 @@ fun MapsChoiceScreen(
         value = offlineManager.packs.toList()
     }
     var selectedPackName by remember { mutableStateOf<String?>(null) }
+    var selectedPackId by remember { mutableStateOf<String?>(null) }
     var showConfirmDialog by remember { mutableStateOf(false) }
     var isInfoVisible by remember { mutableStateOf(true) }
     Scaffold(
@@ -196,7 +197,7 @@ fun MapsChoiceScreen(
                 }
 
                 items(packsState.value) { pack ->
-                    val packMetadata = remember(pack) {
+                    val packMetadataName = remember(pack) {
                         try {
                             val json = pack.metadata?.decodeToString() ?: ""
                             org.json.JSONObject(json).optString("name", "Mapa sem nome")
@@ -205,9 +206,19 @@ fun MapsChoiceScreen(
                         }
                     }
 
+                    val packMetadataId = remember(pack) {
+                        try {
+                            val json = pack.metadata?.decodeToString() ?: ""
+                            org.json.JSONObject(json).optString("id", "")
+                        } catch (e: Exception) {
+                            ""
+                        }
+                    }
+
                     Card(
                         onClick = {
-                            selectedPackName = packMetadata
+                            selectedPackName = packMetadataName
+                            selectedPackId = packMetadataId
                             showConfirmDialog = true
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -228,7 +239,7 @@ fun MapsChoiceScreen(
                             )
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(
-                                text = packMetadata,
+                                text = packMetadataName,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -245,7 +256,7 @@ fun MapsChoiceScreen(
                 text = { Text("Deseja associar o mapa '$selectedPackName' a esta visita?") },
                 confirmButton = {
                     Button(onClick = {
-                        onMapAttach("$selectedPackName")
+                        onMapAttach(selectedPackId)
                         showConfirmDialog = false
                     }) { Text("Confirmar") }
                 },

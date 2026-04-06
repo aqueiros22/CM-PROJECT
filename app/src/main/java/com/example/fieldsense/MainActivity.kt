@@ -54,11 +54,14 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.cloudinary.android.MediaManager
 import com.example.fieldsense.data.remote.CloudinaryService
+import com.example.fieldsense.data.repository.AreaRepository
 import com.example.fieldsense.data.repository.AttachmentRepository
 import com.example.fieldsense.data.repository.AuthRepository
 import com.example.fieldsense.data.repository.ChecklistRepository
 import com.example.fieldsense.data.repository.QuestionRepository
 import com.example.fieldsense.data.repository.TemplateRepository
+import com.example.fieldsense.ui.areas.AreaViewModel
+import com.example.fieldsense.ui.areas.AreaViewModelFactory
 import com.example.fieldsense.ui.map.LocationViewModel
 import com.example.fieldsense.ui.visits.VisitDetailScreen
 import com.example.fieldsense.ui.auth.AuthState
@@ -110,6 +113,8 @@ class MainActivity : ComponentActivity() {
         val noteRepository = NoteRepository(database.noteDao(), firestoreService)
         val noteFactory = NoteViewModelFactory(noteRepository)
 
+        val areaRepository = AreaRepository(database.areaDao(), firestoreService)
+        val areaFactory = AreaViewModelFactory(areaRepository)
         val cloudinaryService = CloudinaryService(applicationContext)
         val attachmentRepository =
             AttachmentRepository(database.attachmentDao(), firestoreService, cloudinaryService)
@@ -150,7 +155,8 @@ class MainActivity : ComponentActivity() {
                                 locationViewModel = locationViewModel,
                                 noteFactory = noteFactory,
                                 templateFactory = templateFactory,
-                                checklistFactory = checklistFactory
+                                checklistFactory = checklistFactory,
+                                areaFactory = areaFactory
                             )
                         }
                         else -> {
@@ -177,6 +183,7 @@ fun MainScreen(
     attachmentFactory: AttachmentViewModelFactory,
     checklistFactory: ChecklistViewModelFactory,
     templateFactory: TemplateViewModelFactory,
+    areaFactory: AreaViewModelFactory,
     onLogout: () -> Unit,
     onNavigateToDrawing: (Int) -> Unit = {}
 ) {
@@ -250,8 +257,10 @@ fun MainScreen(
     val noteViewModel: NoteViewModel = viewModel(factory = noteFactory)
     val attachmentViewModel: AttachmentViewModel = viewModel(factory = attachmentFactory)
     val checklistViewModel: ChecklistViewModel = viewModel(factory = checklistFactory)
+    val areaViewModel: AreaViewModel = viewModel(factory = areaFactory)
     LaunchedEffect(userId) {
         noteViewModel.setUserId(userId)
+        areaViewModel.setUserId(userId)
     }
 
     if (selectedVisit != null) {
@@ -261,6 +270,7 @@ fun MainScreen(
             noteViewModel = noteViewModel,
             attachmentViewModel = attachmentViewModel,
             checklistViewModel = checklistViewModel,
+            areaViewModel = areaViewModel,
             onBack = { selectedVisitId = null },
             onNavigateToDrawing = onNavigateToDrawing,
             templateFactory = templateFactory

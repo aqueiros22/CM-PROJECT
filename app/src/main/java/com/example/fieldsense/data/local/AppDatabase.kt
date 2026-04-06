@@ -12,8 +12,8 @@ import com.example.fieldsense.data.model.Question
 import com.example.fieldsense.data.model.Template
 import com.example.fieldsense.data.model.VisitChecklist
 import com.example.fieldsense.data.model.Answer
-
-@Database(entities = [Visit::class, Note::class, Attachment::class, Template::class, Question::class, VisitChecklist::class, Answer::class ], version = 9, exportSchema = false)
+import com.example.fieldsense.data.model.Area
+@Database(entities = [Visit::class, Note::class, Attachment::class, Template::class, Question::class, VisitChecklist::class, Answer::class, Area::class ], version = 9, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun visitDao(): VisitDao
@@ -22,6 +22,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun templateDao(): TemplateDao
     abstract fun questionDao(): QuestionDao
     abstract fun checklistDao(): ChecklistDao
+    abstract fun areaDao(): AreaDao
+
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
