@@ -45,6 +45,17 @@ class AreaRepository(
         }
     }
 
+    suspend fun pullAreasFromServer(visitId: Int) {
+        try {
+            val remoteAreas = firestoreService.getAreasForVisit(visitId)
+            remoteAreas.forEach { area ->
+                areaDao.insertArea(area.copy(isSynced = true))
+            }
+        } catch (e: Exception) {
+            Log.e("Sync", "Failed to pull areas for visit $visitId", e)
+        }
+    }
+
     suspend fun syncPendingAreas(userId: String) {
         val pendingAreas = areaDao.getUnsyncedAreas(userId)
 
@@ -59,6 +70,4 @@ class AreaRepository(
             }
         }
     }
-
-
 }

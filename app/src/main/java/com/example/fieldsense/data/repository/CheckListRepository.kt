@@ -6,9 +6,6 @@ import com.example.fieldsense.data.model.Answer
 import com.example.fieldsense.data.model.VisitChecklist
 import com.example.fieldsense.data.remote.FirestoreService
 import kotlinx.coroutines.flow.Flow
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class ChecklistRepository(
     private val checklistDao: ChecklistDao,
@@ -42,6 +39,19 @@ class ChecklistRepository(
             firestoreService.deleteChecklist(checklist)
         } catch (e: Exception) {
             Log.e("ChecklistRepository", "Cloud delete failed", e)
+        }
+    }
+
+    suspend fun pullChecklistsFromServer(visitId: Int) {
+        try {
+            val remoteChecklists = firestoreService.getChecklistsForVisit(visitId)
+            remoteChecklists.forEach { checklist ->
+                checklistDao.insertChecklist(checklist.copy(isSynced = true))
+                val remoteAnswers = firestoreService.getAnswersForChecklist(visitId, checklist.id)
+                checklistDao.insertAnswers(remoteAnswers)
+            }
+        } catch (e: Exception) {
+            Log.e("Sync", "Failed to pull checklists for visit $visitId", e)
         }
     }
 

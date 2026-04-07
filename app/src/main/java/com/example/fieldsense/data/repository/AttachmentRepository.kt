@@ -23,7 +23,6 @@ class AttachmentRepository(
     suspend fun insertAttachment(visitId: Int, fileName: String, fileUri: Uri, type: String) {
         val date = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
 
-        // 1. Guarda localmente primeiro
         val attachment = Attachment(
             visitId = visitId,
             fileName = fileName,
@@ -35,7 +34,6 @@ class AttachmentRepository(
         val generatedId = attachmentDao.insertAttachment(attachment)
         val savedAttachment = attachment.copy(id = generatedId.toInt())
 
-        // 2. Tenta sincronizar com Firebase
         try {
             val remoteUrl = cloudinaryService.uploadFile(visitId, fileName, fileUri)
             val syncedAttachment = savedAttachment.copy(remoteUrl = remoteUrl, isSynced = true)
@@ -56,12 +54,23 @@ class AttachmentRepository(
         }
     }
 
+    suspend fun pullAttachmentsFromServer(visitId: Int) {
+        try {
+            val remoteAttachments = firestoreService.getAttachmentsForVisit(visitId)
+            remoteAttachments.forEach { attachment ->
+                attachmentDao.insertAttachment(attachment.copy(isSynced = true))
+            }
+        } catch (e: Exception) {
+            Log.e("Sync", "Failed to pull attachments for visit $visitId", e)
+        }
+    }
+
     suspend fun syncPendingAttachments() {
         val pending = attachmentDao.getUnsyncedAttachments()
 
         pending.forEach { attachment ->
             try {
-                val remoteUrl = cloudinaryService.uploadFile(  // <- mudou
+                val remoteUrl = cloudinaryService.uploadFile(
                     attachment.visitId,
                     attachment.fileName,
                     Uri.parse(attachment.localPath)

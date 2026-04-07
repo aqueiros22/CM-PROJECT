@@ -46,6 +46,17 @@ class NoteRepository(
         }
     }
 
+    suspend fun pullNotesFromServer(visitId: Int) {
+        try {
+            val remoteNotes = firestoreService.getNotesForVisit(visitId)
+            remoteNotes.forEach { note ->
+                noteDao.insertNote(note.copy(isSynced = true))
+            }
+        } catch (e: Exception) {
+            Log.e("Sync", "Failed to pull notes for visit $visitId", e)
+        }
+    }
+
     suspend fun syncPendingNotes(userId: String) {
         val pendingNotes = noteDao.getUnsyncedNotes(userId)
 
@@ -60,6 +71,4 @@ class NoteRepository(
             }
         }
     }
-
-
 }

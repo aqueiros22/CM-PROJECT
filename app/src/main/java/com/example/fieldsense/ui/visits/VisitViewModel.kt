@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+
 class VisitViewModel(private val repository: VisitRepository) : ViewModel() {
 
     private val _userId = MutableStateFlow<String?>(null)
@@ -87,8 +88,15 @@ class VisitViewModel(private val repository: VisitRepository) : ViewModel() {
         }
     }
 
+    fun pullEverything() {
+        viewModelScope.launch {
+            repository.pullEverythingFromServer()
+        }
+    }
+
     fun onNetworkRestored() {
         syncPendingVisits()
+        pullEverything()
     }
 }
 class VisitViewModelFactory(private val repository: VisitRepository) :

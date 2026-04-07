@@ -11,6 +11,7 @@ import com.example.fieldsense.data.model.VisitChecklist
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
+import com.google.firebase.firestore.toObject
 import kotlinx.coroutines.tasks.await
 
 class FirestoreService {
@@ -29,6 +30,10 @@ class FirestoreService {
         getUserVisitsCollection()?.document(visitId.toString())?.delete()?.await()
     }
 
+    suspend fun getAllVisits(): List<Visit> {
+        return getUserVisitsCollection()?.get()?.await()?.toObjects(Visit::class.java) ?: emptyList()
+    }
+
     private fun getNotesCollection(visitId: Int) =
         getUserVisitsCollection()?.document(visitId.toString())?.collection("notes")
 
@@ -39,12 +44,13 @@ class FirestoreService {
     suspend fun deleteNote(note: Note) {
         getNotesCollection(note.visitId)?.document(note.id.toString())?.delete()?.await()
     }
+
+    suspend fun getNotesForVisit(visitId: Int): List<Note> {
+        return getNotesCollection(visitId)?.get()?.await()?.toObjects(Note::class.java) ?: emptyList()
+    }
+
     private fun getAttachmentsCollection(visitId: Int) =
         getUserVisitsCollection()?.document(visitId.toString())?.collection("attachments")
-
-    private fun getTemplatesCollection() = auth.currentUser?.uid?.let { uid ->
-        db.collection("users").document(uid).collection("templates")
-    }
 
     suspend fun uploadAttachment(attachment: Attachment) {
         getAttachmentsCollection(attachment.visitId)
@@ -60,6 +66,14 @@ class FirestoreService {
             ?.await()
     }
 
+    suspend fun getAttachmentsForVisit(visitId: Int): List<Attachment> {
+        return getAttachmentsCollection(visitId)?.get()?.await()?.toObjects(Attachment::class.java) ?: emptyList()
+    }
+
+    private fun getTemplatesCollection() = auth.currentUser?.uid?.let { uid ->
+        db.collection("users").document(uid).collection("templates")
+    }
+
     suspend fun uploadTemplate(template: Template) {
         getTemplatesCollection()
             ?.document(template.id.toString())
@@ -73,6 +87,11 @@ class FirestoreService {
             ?.delete()
             ?.await()
     }
+
+    suspend fun getAllTemplates(): List<Template> {
+        return getTemplatesCollection()?.get()?.await()?.toObjects(Template::class.java) ?: emptyList()
+    }
+
     suspend fun uploadTemplateWithQuestions(template: Template, questions: List<Question>) {
         val templateRef = getTemplatesCollection()?.document(template.id.toString())
 
@@ -93,6 +112,12 @@ class FirestoreService {
                 .await()
         }
     }
+
+    suspend fun getQuestionsForTemplate(templateId: Int): List<Question> {
+        return getTemplatesCollection()?.document(templateId.toString())?.collection("questions")
+            ?.get()?.await()?.toObjects(Question::class.java) ?: emptyList()
+    }
+
     private fun getChecklistsCollection(visitId: Int) =
         getUserVisitsCollection()?.document(visitId.toString())?.collection("checklists")
 
@@ -115,13 +140,27 @@ class FirestoreService {
             ?.await()
     }
 
+    suspend fun getChecklistsForVisit(visitId: Int): List<VisitChecklist> {
+        return getChecklistsCollection(visitId)?.get()?.await()?.toObjects(VisitChecklist::class.java) ?: emptyList()
+    }
+
+    suspend fun getAnswersForChecklist(visitId: Int, checklistId: Int): List<Answer> {
+        return getChecklistsCollection(visitId)?.document(checklistId.toString())?.collection("answers")
+            ?.get()?.await()?.toObjects(Answer::class.java) ?: emptyList()
+    }
+
     fun getAreasCollection(visitId: Int) =
         getUserVisitsCollection()?.document(visitId.toString())?.collection("areas")
+
     suspend fun uploadArea(area: Area) {
         getAreasCollection(area.visitId)?.document(area.id.toString())?.set(area)?.await()
-
     }
+
     suspend fun deleteArea(area: Area){
         getAreasCollection(area.visitId)?.document(area.id.toString())?.delete()?.await()
+    }
+
+    suspend fun getAreasForVisit(visitId: Int): List<Area> {
+        return getAreasCollection(visitId)?.get()?.await()?.toObjects(Area::class.java) ?: emptyList()
     }
 }

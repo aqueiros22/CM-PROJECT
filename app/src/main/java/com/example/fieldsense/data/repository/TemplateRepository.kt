@@ -48,6 +48,19 @@ class TemplateRepository  (
         }
     }
 
+    suspend fun pullTemplatesFromServer() {
+        try {
+            val remoteTemplates = firestoreService.getAllTemplates()
+            remoteTemplates.forEach { template ->
+                templateDao.insertTemplate(template.copy(isSynced = true))
+                val remoteQuestions = firestoreService.getQuestionsForTemplate(template.id)
+                questionDao.insertQuestions(remoteQuestions)
+            }
+        } catch (e: Exception) {
+            Log.e("Sync", "Failed to pull templates", e)
+        }
+    }
+
     suspend fun syncPendingTemplates() {
         val pendingTemplates = templateDao.getUnsyncedTemplates()
 

@@ -47,7 +47,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.launch
@@ -107,7 +106,17 @@ class MainActivity : ComponentActivity() {
         val database = AppDatabase.getDatabase(applicationContext)
         val firestoreService = FirestoreService()
 
-        val visitRepository = VisitRepository(database.visitDao(), database.noteDao(), firestoreService, applicationContext)
+        val visitRepository = VisitRepository(
+            database.visitDao(),
+            database.noteDao(),
+            database.areaDao(),
+            database.attachmentDao(),
+            database.checklistDao(),
+            database.templateDao(),
+            database.questionDao(),
+            firestoreService,
+            applicationContext
+        )
         val visitFactory = VisitViewModelFactory(visitRepository)
 
         val noteRepository = NoteRepository(database.noteDao(), firestoreService)
@@ -140,6 +149,7 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(authState) {
                     if (authState is AuthState.Authenticated) {
                         visitViewModel.setUserId(authRepository.getCurrentUserId())
+                        visitViewModel.pullEverything()
                     }
                 }
 
