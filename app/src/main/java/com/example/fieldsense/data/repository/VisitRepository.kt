@@ -84,8 +84,12 @@ class VisitRepository(
             val remoteVisits = firestoreService.getAllVisits()
             Log.d("Sync", "Found ${remoteVisits.size} visits")
             remoteVisits.forEach { visit ->
-                // Usamos insertVisit que deve estar configurado com OnConflictStrategy.REPLACE
-                visitDao.insertVisit(visit.copy(isSynced = true))
+                val syncedVisit = visit.copy(isSynced = true)
+                if (visitDao.existsById(syncedVisit.id)) {
+                    visitDao.updateVisit(syncedVisit)
+                } else {
+                    visitDao.insertVisit(syncedVisit)
+                }
                 val vId = visit.id
 
                 // Notas

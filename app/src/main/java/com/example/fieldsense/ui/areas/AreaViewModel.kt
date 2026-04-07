@@ -37,16 +37,20 @@ class AreaViewModel(private val repository: AreaRepository) : ViewModel() {
 
     fun insertArea(visitId: Int, points: String) {
         viewModelScope.launch {
-            val uid = _userId.value ?: ""
-            repository.insertArea(
-                Area(
-                    userId = uid,
-                    visitId = visitId,
-                    points = points,
-                    isSynced = false
-                )
-            )
+            insertAreaSuspend(visitId, points)
         }
+    }
+
+    suspend fun insertAreaSuspend(visitId: Int, points: String) {
+        val uid = _userId.value ?: ""
+        repository.insertArea(
+            Area(
+                userId = uid,
+                visitId = visitId,
+                points = points,
+                isSynced = false
+            )
+        )
     }
 
     fun deleteArea(area: Area) {

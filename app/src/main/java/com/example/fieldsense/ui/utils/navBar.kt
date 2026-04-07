@@ -10,6 +10,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -89,6 +90,11 @@ fun AppNavHost(
             val visitId = visitIdStr?.toIntOrNull()
             val visits by visitViewModel.visits.collectAsState()
             val archivedVisits by visitViewModel.archivedVisits.collectAsState()
+            val areaViewModel = viewModel<com.example.fieldsense.ui.areas.AreaViewModel>(factory = areaFactory)
+
+            LaunchedEffect(userId) {
+                areaViewModel.setUserId(userId)
+            }
 
             val visit = visits.find { it.id == visitId } ?: archivedVisits.find { it.id == visitId }
 
@@ -100,7 +106,7 @@ fun AppNavHost(
                     },
                     onBack = { navController.popBackStack() },
                     offlineManager = offlineManager,
-                    viewModel = viewModel(factory = areaFactory)
+                    viewModel = areaViewModel
                 )
 /*                VisitAreaDrawingScreen(
                     visit = visit,

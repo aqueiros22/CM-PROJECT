@@ -258,7 +258,9 @@ fun AreaDrawingScreen(
                                 )
                             } else {
                                 for (area in existingAreas){
-                                    val firstPoint = area.getPositions().first()
+                                    val positions = area.getPositions()
+                                    if (positions.isEmpty()) continue
+                                    val firstPoint = positions.first()
                                     DropdownMenuItem(
                                         text = {
                                             @Suppress("DEPRECATION")
@@ -482,12 +484,18 @@ fun AreaDrawingScreen(
                                 Button(
                                     enabled = currentPoints.size >= 3,
                                     onClick = {
-                                        val pointsStr =
-                                            currentPoints.joinToString(";") { "${it.latitude},${it.longitude}" }
-                                        viewModel.insertArea(visit.id, pointsStr)
-                                        currentPoints.clear()
-                                        Toast.makeText(context, "Área salva!", Toast.LENGTH_SHORT)
-                                            .show()
+                                        coroutineScope.launch {
+                                            val pointsStr =
+                                                currentPoints.joinToString(";") { "${it.latitude},${it.longitude}" }
+                                            runCatching {
+                                                viewModel.insertAreaSuspend(visit.id, pointsStr)
+                                            }.onSuccess {
+                                                currentPoints.clear()
+                                                Toast.makeText(context, "Área salva!", Toast.LENGTH_SHORT).show()
+                                            }.onFailure {
+                                                Toast.makeText(context, "Falha ao guardar área", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
                                     },
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = FieldSenseGreen

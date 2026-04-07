@@ -18,7 +18,7 @@ class AreaRepository(
 
         try {
             firestoreService.uploadArea(syncedArea)
-            areaDao.insertArea(syncedArea)
+            areaDao.updateArea(syncedArea)
         } catch (e: Exception) {
             Log.e("AreaRepository", "Cloud sync failed, stored locally only", e)
         }
@@ -63,7 +63,7 @@ class AreaRepository(
             try {
                 val syncedArea = area.copy(isSynced = true)
                 firestoreService.uploadArea(syncedArea)
-                areaDao.insertArea(syncedArea)
+                areaDao.updateArea(syncedArea)
             }
             catch (e: Exception) {
                 Log.e("Sync", "Ainda sem ligação para a área ${area.id}")
