@@ -92,8 +92,12 @@ class VisitRepository(
             Log.d("Sync", "Found ${remoteVisits.size} visits")
             remoteVisits.forEach { visit ->
                 val syncedVisit = visit.copy(isSynced = true)
-                if (visitDao.existsById(syncedVisit.id)) {
-                    visitDao.updateVisit(syncedVisit)
+                val localVisit = visitDao.getVisitById(syncedVisit.id)
+                if (localVisit != null) {
+                    if (localVisit.isSynced) {
+                        val mergedVisit = syncedVisit.copy(isArchived = localVisit.isArchived)
+                        visitDao.updateVisit(mergedVisit)
+                    }
                 } else {
                     visitDao.insertVisit(syncedVisit)
                 }

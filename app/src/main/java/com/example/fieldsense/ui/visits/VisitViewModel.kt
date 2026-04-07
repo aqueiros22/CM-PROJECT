@@ -95,8 +95,12 @@ class VisitViewModel(private val repository: VisitRepository) : ViewModel() {
     }
 
     fun onNetworkRestored() {
-        syncPendingVisits()
-        pullEverything()
+        viewModelScope.launch {
+            _userId.value?.let { uid ->
+                repository.syncPendingVisits(uid)
+            }
+            repository.pullEverythingFromServer()
+        }
     }
 }
 class VisitViewModelFactory(private val repository: VisitRepository) :

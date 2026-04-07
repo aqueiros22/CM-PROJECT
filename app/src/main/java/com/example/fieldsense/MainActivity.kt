@@ -149,7 +149,7 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(authState) {
                     if (authState is AuthState.Authenticated) {
                         visitViewModel.setUserId(authRepository.getCurrentUserId())
-                        visitViewModel.pullEverything()
+                        visitViewModel.onNetworkRestored()
                     }
                 }
 
