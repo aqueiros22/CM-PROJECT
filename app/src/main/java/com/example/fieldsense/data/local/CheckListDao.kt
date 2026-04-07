@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ChecklistDao {
 
+    @Query("SELECT EXISTS(SELECT 1 FROM visit_checklists WHERE id = :checklistId)")
+    suspend fun existsChecklistById(checklistId: Int): Boolean
+
     // Checklists
     @Query("SELECT * FROM visit_checklists WHERE visitId = :visitId ORDER BY id DESC")
     fun getChecklistsForVisit(visitId: Int): Flow<List<VisitChecklist>>
@@ -33,4 +36,18 @@ interface ChecklistDao {
 
     @Query("DELETE FROM answers WHERE checklistId = :checklistId")
     suspend fun deleteAnswersForChecklist(checklistId: Int)
+
+        @Query(
+                """
+                DELETE FROM answers
+                WHERE checklistId = :checklistId
+                    AND id NOT IN (
+                        SELECT MAX(id)
+                        FROM answers
+                        WHERE checklistId = :checklistId
+                        GROUP BY questionId
+                    )
+                """
+        )
+        suspend fun removeDuplicateAnswersForChecklist(checklistId: Int)
 }

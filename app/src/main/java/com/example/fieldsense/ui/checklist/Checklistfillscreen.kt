@@ -26,6 +26,7 @@ import com.example.fieldsense.data.model.Answer
 import com.example.fieldsense.data.model.QuestionType
 import com.example.fieldsense.data.model.VisitChecklist
 import com.example.fieldsense.ui.checklist.ChecklistViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +35,10 @@ fun ChecklistFillScreen(
     checklistViewModel: ChecklistViewModel,
     onBack: () -> Unit
 ) {
+    LaunchedEffect(checklist.id) {
+        checklistViewModel.cleanupDuplicateAnswers(checklist.id)
+    }
+
     // As answers já existem na BD (criadas vazias pelo createChecklistFromTemplate)
     // O user vai preencher os valores aqui
     val savedAnswers by checklistViewModel.getAnswersForChecklist(checklist.id).collectAsState()
@@ -53,6 +58,7 @@ fun ChecklistFillScreen(
     var showExitDialog by rememberSaveable { mutableStateOf(false) }
     var showSaveSuccess by rememberSaveable { mutableStateOf(false) }
     var isSaving by rememberSaveable { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val listState = rememberLazyListState()
@@ -168,18 +174,21 @@ fun ChecklistFillScreen(
                     )
                     Button(
                         onClick = {
-                            isSaving = true
-                            // Reconstruir answers com os valores preenchidos pelo user
-                            val updatedAnswers = savedAnswers.map { answer ->
-                                answer.copy(value = localValues[answer.id] ?: answer.value)
+                            coroutineScope.launch {
+                                isSaving = true
+                                val updatedAnswers = savedAnswers.map { answer ->
+                                    answer.copy(value = localValues[answer.id] ?: answer.value)
+                                }
+                                runCatching {
+                                    checklistViewModel.insertChecklistWithAnswersSuspend(
+                                        checklist.copy(isSynced = false),
+                                        updatedAnswers
+                                    )
+                                }.onSuccess {
+                                    showSaveSuccess = true
+                                }
+                                isSaving = false
                             }
-                            // insertChecklistWithAnswers apaga as antigas e insere as novas
-                            checklistViewModel.insertChecklistWithAnswers(
-                                checklist.copy(isSynced = false),
-                                updatedAnswers
-                            )
-                            isSaving = false
-                            showSaveSuccess = true
                         },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isSaving && totalCount > 0,

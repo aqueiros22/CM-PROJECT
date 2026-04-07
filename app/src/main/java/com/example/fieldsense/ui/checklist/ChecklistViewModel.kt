@@ -37,8 +37,12 @@ class ChecklistViewModel(private val repository: ChecklistRepository, private va
 
     fun insertChecklistWithAnswers(checklist: VisitChecklist, answers: List<Answer>) {
         viewModelScope.launch {
-            repository.insertChecklistWithAnswers(checklist, answers)
+            insertChecklistWithAnswersSuspend(checklist, answers)
         }
+    }
+
+    suspend fun insertChecklistWithAnswersSuspend(checklist: VisitChecklist, answers: List<Answer>) {
+        repository.insertChecklistWithAnswers(checklist, answers)
     }
 
     fun deleteChecklist(checklist: VisitChecklist) {
@@ -52,6 +56,13 @@ class ChecklistViewModel(private val repository: ChecklistRepository, private va
             repository.syncPendingChecklists()
         }
     }
+
+    fun cleanupDuplicateAnswers(checklistId: Int) {
+        viewModelScope.launch {
+            repository.cleanupDuplicateAnswers(checklistId)
+        }
+    }
+
     fun createChecklistFromTemplate(visitId: Int, template: Template) {
         viewModelScope.launch {
             val date = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())

@@ -18,10 +18,19 @@ class ChecklistRepository(
         checklistDao.getAnswersForChecklist(checklistId)
 
     suspend fun insertChecklistWithAnswers(checklist: VisitChecklist, answers: List<Answer>) {
-        val generatedId = checklistDao.insertChecklist(checklist).toInt()
-        val savedChecklist = checklist.copy(id = generatedId)
+        val isExistingChecklist = checklist.id != 0 && checklistDao.existsChecklistById(checklist.id)
 
-        val answersWithChecklistId = answers.map { it.copy(checklistId = generatedId) }
+        val checklistId = if (isExistingChecklist) {
+            checklistDao.updateChecklist(checklist)
+            checklist.id
+        } else {
+            checklistDao.insertChecklist(checklist).toInt()
+        }
+
+        val savedChecklist = checklist.copy(id = checklistId)
+
+        checklistDao.deleteAnswersForChecklist(checklistId)
+        val answersWithChecklistId = answers.map { it.copy(checklistId = checklistId) }
         checklistDao.insertAnswers(answersWithChecklistId)
 
         try {
@@ -66,5 +75,9 @@ class ChecklistRepository(
                 Log.e("Sync", "Sync falhou para checklist ${checklist.id}")
             }
         }
+    }
+
+    suspend fun cleanupDuplicateAnswers(checklistId: Int) {
+        checklistDao.removeDuplicateAnswersForChecklist(checklistId)
     }
 }
