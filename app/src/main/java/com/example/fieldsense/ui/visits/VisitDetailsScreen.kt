@@ -2,6 +2,7 @@ package com.example.fieldsense.ui.visits
 
 import android.app.Activity
 import android.content.Intent
+import android.location.Geocoder
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.speech.RecognizerIntent
@@ -48,6 +49,8 @@ import com.example.fieldsense.ui.templates.TemplateViewModel
 import com.example.fieldsense.ui.templates.TemplateViewModelFactory
 import com.example.fieldsense.ui.theme.FieldSenseGreen
 import com.example.fieldsense.ui.utils.DeleteConfirmationDialog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
@@ -423,44 +426,69 @@ fun VisitDetailScreen(
 @Composable
 fun VisitAreaMapSection(visit: Visit, areas: List<Area>, onEditArea: () -> Unit) {
     val context = LocalContext.current
-    val points = remember(visit.area) {
-        val list = mutableListOf<Position>()
-        visit.area?.let { areaStr ->
-            areaStr.split(";").forEach { pair ->
-                val coords = pair.split(",")
-                if (coords.size == 2) {
-                    try {
-                        list.add(Position(coords[1].toDouble(), coords[0].toDouble()))
-                    } catch (e: Exception) {
-                        // ignore
-                    }
+    
+    // Check if there is a map attached OR an address to show
+    val hasMap = !visit.map.isNullOrBlank()
+    val hasArea = areas.isNotEmpty()
+
+    if (!hasMap && !hasArea) {
+        // If no map is attached and no area is drawn, show only the "Define Area" button
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    stringResource(R.string.visit_area),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Button(
+                    onClick = onEditArea,
+                    colors = ButtonDefaults.buttonColors(containerColor = FieldSenseGreen)
+                ) {
+                    Icon(Icons.Default.Map, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.define_area))
                 }
             }
         }
-        list
+        return
     }
 
-    // Extract center from visit.location
-    val center = remember(visit.location) {
-        try {
-            val cleanText = visit.location.replace(" (Last known)", "").trim()
-            val parts = cleanText.split(",")
-            if (parts.size == 2) {
-                Position(parts[1].trim().toDouble(), parts[0].trim().toDouble())
-            } else {
-                Position(-9.1399, 38.7169)
-            }
-        } catch (e: Exception) {
-            Position(-9.1399, 38.7169)
+    // Parse location (Address or Coordinates)
+    var visitPosition by remember { mutableStateOf<Position?>(null) }
+    LaunchedEffect(visit.location) {
+        withContext(Dispatchers.IO) {
+            try {
+                val parts = visit.location.split(",")
+                if (parts.size == 2 && parts[0].toDoubleOrNull() != null && parts[1].toDoubleOrNull() != null) {
+                    visitPosition = Position(parts[1].trim().toDouble(), parts[0].trim().toDouble())
+                } else {
+                    val geocoder = Geocoder(context, Locale.getDefault())
+                    val addresses = geocoder.getFromLocationName(visit.location, 1)
+                    if (!addresses.isNullOrEmpty()) {
+                        visitPosition = Position(addresses[0].longitude, addresses[0].latitude)
+                    }
+                }
+            } catch (e: Exception) { }
         }
     }
 
     val cameraState = rememberCameraState(
         firstPosition = CameraPosition(
-            target = center,
+            target = visitPosition ?: Position(-9.1399, 38.7169),
             zoom = 15.0
         )
     )
+
+    LaunchedEffect(visitPosition) {
+        visitPosition?.let {
+            cameraState.animateTo(CameraPosition(target = it, zoom = 15.0))
+        }
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -475,8 +503,7 @@ fun VisitAreaMapSection(visit: Visit, areas: List<Area>, onEditArea: () -> Unit)
                 color = MaterialTheme.colorScheme.onBackground
             )
             TextButton(onClick = onEditArea) {
-                Text(stringResource(R.string.define_area))
-                // Text(if (points.isEmpty()) stringResource(R.string.define_area) else stringResource(R.string.edit_area))
+                Text(if (hasArea) "Editar Área" else "Definir Área")
             }
         }
         
@@ -494,7 +521,7 @@ fun VisitAreaMapSection(visit: Visit, areas: List<Area>, onEditArea: () -> Unit)
                     cameraState = cameraState,
                     onMapClick = { _, _ -> ClickResult.Consume }
                 ) {
-                    // Draw existing areas from the Area entity
+                    // Draw existing areas
                     areas.forEach { area ->
                         key(area.id) {
                             val posList = area.getPositions()
@@ -506,7 +533,7 @@ fun VisitAreaMapSection(visit: Visit, areas: List<Area>, onEditArea: () -> Unit)
                                     id = "area-fill-${area.id}",
                                     source = source,
                                     color = const(FieldSenseGreen),
-                                    opacity = const(0.2f)
+                                    opacity = const(0.3f)
                                 )
                                 LineLayer(
                                     id = "area-line-${area.id}",
@@ -518,45 +545,25 @@ fun VisitAreaMapSection(visit: Visit, areas: List<Area>, onEditArea: () -> Unit)
                         }
                     }
 
-                    // Legacy visit.area if it has 3+ points
-                    if (points.size >= 3) {
-                        val legacySource = rememberGeoJsonSource(
-                            data = GeoJsonData.JsonString(generatePolygonJson(points))
-                        )
-                        FillLayer(
-                            id = "legacy-area-fill",
-                            source = legacySource,
-                            color = const(FieldSenseGreen),
-                            opacity = const(0.2f)
-                        )
-                        LineLayer(
-                            id = "legacy-area-line",
-                            source = legacySource,
-                            color = const(FieldSenseGreen),
-                            width = const(2.dp)
-                        )
-                    }
-
                     // Visit location marker
-                    val centerSource = rememberGeoJsonSource(
-                        data = GeoJsonData.Features(
-                            FeatureCollection(
-                                Feature(
-                                    geometry = Point(center),
-                                    properties = JsonObject(content = emptyMap())
+                    visitPosition?.let { pos ->
+                        val centerSource = rememberGeoJsonSource(
+                            data = GeoJsonData.Features(
+                                FeatureCollection(
+                                    listOf(Feature(geometry = Point(pos), properties = JsonObject(emptyMap())))
                                 )
                             )
                         )
-                    )
-                    CircleLayer(
-                        id = "visit-location-marker",
-                        source = centerSource,
-                        radius = const(6.dp),
-                        color = const(MaterialTheme.colorScheme.primary)
-                    )
-
+                        CircleLayer(
+                            id = "visit-location-marker",
+                            source = centerSource,
+                            radius = const(8.dp),
+                            color = const(Color.Red),
+                            strokeColor = const(Color.White),
+                            strokeWidth = const(2.dp)
+                        )
+                    }
                 }
-
             }
         }
     }

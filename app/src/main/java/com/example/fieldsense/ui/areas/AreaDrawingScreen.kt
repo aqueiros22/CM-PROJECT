@@ -1,6 +1,7 @@
 package com.example.fieldsense.ui.areas
 
 import android.R
+import android.location.Geocoder
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -40,8 +41,10 @@ import com.example.fieldsense.data.model.Area
 import com.example.fieldsense.data.model.Visit
 import com.example.fieldsense.ui.map.MapsChoiceScreen
 import com.example.fieldsense.ui.theme.FieldSenseGreen
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
@@ -62,6 +65,7 @@ import org.maplibre.spatialk.geojson.Feature
 import org.maplibre.spatialk.geojson.FeatureCollection
 import org.maplibre.spatialk.geojson.Point
 import org.maplibre.spatialk.geojson.Position
+import java.util.Locale
 import kotlin.collections.map
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -119,27 +123,67 @@ fun AreaDrawingScreen(
 
     val existingAreas by viewModel.getAreasForVisit(visit.id).collectAsState(initial = emptyList())
 
-    var centerLat by rememberSaveable { mutableStateOf<Double?>(-9.1399) }
-    var centerLng by rememberSaveable { mutableStateOf<Double?>(38.7169) }
+    // Parse visit location (Address to Coordinates)
+    var visitPosition by remember { mutableStateOf<Position?>(null) }
+
+    LaunchedEffect(visit.location) {
+        withContext(Dispatchers.IO) {
+            try {
+                // Try parsing as "lat, lng" first
+                val parts = visit.location.split(",")
+                if (parts.size == 2 && parts[0].toDoubleOrNull() != null && parts[1].toDoubleOrNull() != null) {
+                    val lat = parts[0].trim().toDouble()
+                    val lng = parts[1].trim().toDouble()
+                    visitPosition = Position(lng, lat)
+                } else {
+                    // Try geocoding the address string
+                    val geocoder = Geocoder(context, Locale.getDefault())
+                    val addresses = geocoder.getFromLocationName(visit.location, 1)
+                    if (!addresses.isNullOrEmpty()) {
+                        val address = addresses[0]
+                        visitPosition = Position(address.longitude, address.latitude)
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    var centerLat by rememberSaveable { mutableStateOf<Double?>(null) }
+    var centerLng by rememberSaveable { mutableStateOf<Double?>(null) }
 
     val cameraState = rememberCameraState(
-        firstPosition = CameraPosition(target = Position(-9.1399, 38.7169), zoom = 15.0)
+        firstPosition = CameraPosition(
+            target = Position(-9.1399, 38.7169),
+            zoom = 15.0
+        )
     )
 
-    LaunchedEffect(pack) {
-        val definition = pack.definition
-        if (definition is OfflinePackDefinition.TilePyramid) {
-            val bounds = definition.bounds
-            centerLat = (bounds.southwest.latitude + bounds.northeast.latitude) / 2
-            centerLng = (bounds.southwest.longitude + bounds.northeast.longitude) / 2
-
-            if (centerLat != null && centerLng != null) {
-                cameraState.animateTo(
-                    CameraPosition(
-                        target = Position(centerLng!!, centerLat!!),
-                        zoom = 14.0 // Slightly zoomed out to see the region
-                    )
+    // Trigger animation when visitPosition is resolved or pack is loaded
+    LaunchedEffect(visitPosition, pack) {
+        if (visitPosition != null) {
+            cameraState.animateTo(
+                CameraPosition(
+                    target = visitPosition!!,
+                    zoom = 15.0
                 )
+            )
+        } else {
+            val definition = pack.definition
+            if (definition is OfflinePackDefinition.TilePyramid) {
+                val bounds = definition.bounds
+                centerLat = (bounds.southwest.latitude + bounds.northeast.latitude) / 2
+                centerLng = (bounds.southwest.longitude + bounds.northeast.longitude) / 2
+
+                if (centerLat != null && centerLng != null) {
+                    cameraState.animateTo(
+                        CameraPosition(
+                            target = Position(centerLng!!, centerLat!!),
+                            zoom = 14.0
+                        )
+                    )
+                }
             }
         }
     }
@@ -196,6 +240,7 @@ fun AreaDrawingScreen(
                             onDismissRequest = { menuExpanded = false },
                             modifier = Modifier.width(280.dp) // Wider to fit coordinates
                         ) {
+                            @Suppress("DEPRECATION")
                             Text(
                                 "Áreas Desenhadas",
                                 style = MaterialTheme.typography.labelLarge,
@@ -216,6 +261,7 @@ fun AreaDrawingScreen(
                                     val firstPoint = area.getPositions().first()
                                     DropdownMenuItem(
                                         text = {
+                                            @Suppress("DEPRECATION")
                                             Text(
                                             " ${"%.4f".format(firstPoint.latitude)}, ${"%.4f".format(firstPoint.longitude)}",
                                             style = MaterialTheme.typography.bodySmall
@@ -273,6 +319,25 @@ fun AreaDrawingScreen(
                 }
 
             ) {
+                // Layer 0: Visit Location Circle
+                visitPosition?.let { pos ->
+                    val visitSource = rememberGeoJsonSource(
+                        data = GeoJsonData.Features(
+                            FeatureCollection(
+                                listOf(Feature(geometry = Point(pos), properties = JsonObject(emptyMap())))
+                            )
+                        )
+                    )
+                    CircleLayer(
+                        id = "visit-location-layer",
+                        source = visitSource,
+                        radius = const(10.dp),
+                        color = const(Color.Red),
+                        strokeColor = const(Color.White),
+                        strokeWidth = const(2.dp)
+                    )
+                }
+
                 // Layer 1: Draw EXISTING areas
                 existingAreas.forEach { area ->
 
@@ -349,6 +414,7 @@ fun AreaDrawingScreen(
                         color = Color.Black.copy(alpha = 0.7f),
                         shape = MaterialTheme.shapes.medium
                     ) {
+                        @Suppress("DEPRECATION")
                         Text(
                             "Toque no mapa para desenhar (mín. 3 pontos)",
                             color = Color.White,
@@ -459,11 +525,15 @@ fun AreaDrawingScreen(
                             containerColor = FieldSenseGreen,
                             onClick = {
                                 coroutineScope.launch {
-                                    if (centerLat != null && centerLng != null) {
+                                    val target = visitPosition ?: if (centerLat != null && centerLng != null) {
+                                        Position(centerLng!!, centerLat!!)
+                                    } else null
+
+                                    target?.let {
                                         cameraState.animateTo(
                                             CameraPosition(
-                                                target = Position(centerLng!!, centerLat!!),
-                                                zoom = 14.0 // Slightly zoomed out to see the region
+                                                target = it,
+                                                zoom = 16.0 // Zoom in more to see the visit location clearly
                                             )
                                         )
                                     }
