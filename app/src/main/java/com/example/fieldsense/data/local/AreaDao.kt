@@ -11,6 +11,9 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AreaDao {
+    @Query("SELECT EXISTS(SELECT 1 FROM areas WHERE id = :areaId)")
+    suspend fun existsById(areaId: Int): Boolean
+
     @Query("SELECT * FROM areas WHERE visitId = :visitId")
     fun getAreasForVisit(visitId: Int): Flow<List<Area>>
 

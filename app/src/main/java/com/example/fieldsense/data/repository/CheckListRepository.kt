@@ -68,7 +68,9 @@ class ChecklistRepository(
         val pending = checklistDao.getUnsyncedChecklists()
         pending.forEach { checklist ->
             try {
+                val answers = checklistDao.getAnswersForChecklistSync(checklist.id)
                 val syncedChecklist = checklist.copy(isSynced = true)
+                firestoreService.uploadChecklistWithAnswers(syncedChecklist, answers)
                 checklistDao.updateChecklist(syncedChecklist)
                 Log.d("Sync", "Checklist ${checklist.id} sincronizada!")
             } catch (e: Exception) {

@@ -134,6 +134,7 @@ fun VisitDetailScreen(
     LaunchedEffect(Unit) {
         noteViewModel.syncPendingNotes()
         attachmentViewModel.syncPendingAttachments()
+        checklistViewModel.onNetworkRestored()
     }
 
     if (selectedNote != null) {
@@ -933,6 +934,18 @@ fun ChecklistCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
+            if (!checklist.isSynced) {
+                Icon(
+                    Icons.Filled.CloudUpload,
+                    contentDescription = stringResource(R.string.pending),
+                    modifier = Modifier
+                        .size(16.dp)
+                        .padding(end = 8.dp),
+                    tint = MaterialTheme.colorScheme.secondary
+                )
+            }
+
             IconButton(
                 onClick = { showDeleteDialog = true },
                 colors = IconButtonDefaults.filledTonalIconButtonColors(

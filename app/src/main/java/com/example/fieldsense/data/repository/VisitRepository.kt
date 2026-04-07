@@ -75,9 +75,21 @@ class VisitRepository(
             val remoteTemplates = firestoreService.getAllTemplates()
             Log.d("Sync", "Found ${remoteTemplates.size} templates")
             remoteTemplates.forEach { template ->
-                templateDao.insertTemplate(template.copy(isSynced = true))
+                val syncedTemplate = template.copy(isSynced = true)
+                if (templateDao.existsById(syncedTemplate.id)) {
+                    templateDao.updateTemplate(syncedTemplate)
+                } else {
+                    templateDao.insertTemplate(syncedTemplate)
+                }
+
                 val questions = firestoreService.getQuestionsForTemplate(template.id)
-                questionDao.insertQuestions(questions)
+                questions.forEach { question ->
+                    if (questionDao.existsById(question.id)) {
+                        questionDao.updateQuestion(question)
+                    } else {
+                        questionDao.insertQuestion(question)
+                    }
+                }
             }
 
             // 2. Visitas e dependentes
@@ -94,22 +106,55 @@ class VisitRepository(
 
                 // Notas
                 val notes = firestoreService.getNotesForVisit(vId)
-                notes.forEach { noteDao.insertNote(it.copy(isSynced = true)) }
+                notes.forEach {
+                    val syncedNote = it.copy(isSynced = true)
+                    if (noteDao.existsById(syncedNote.id)) {
+                        noteDao.updateNote(syncedNote)
+                    } else {
+                        noteDao.insertNote(syncedNote)
+                    }
+                }
                 
                 // Áreas
                 val areas = firestoreService.getAreasForVisit(vId)
-                areas.forEach { areaDao.insertArea(it.copy(isSynced = true)) }
+                areas.forEach {
+                    val syncedArea = it.copy(isSynced = true)
+                    if (areaDao.existsById(syncedArea.id)) {
+                        areaDao.updateArea(syncedArea)
+                    } else {
+                        areaDao.insertArea(syncedArea)
+                    }
+                }
                 
                 // Attachments
                 val attachments = firestoreService.getAttachmentsForVisit(vId)
-                attachments.forEach { attachmentDao.insertAttachment(it.copy(isSynced = true)) }
+                attachments.forEach {
+                    val syncedAttachment = it.copy(isSynced = true)
+                    if (attachmentDao.existsById(syncedAttachment.id)) {
+                        attachmentDao.updateAttachment(syncedAttachment)
+                    } else {
+                        attachmentDao.insertAttachment(syncedAttachment)
+                    }
+                }
                 
                 // Checklists e Respostas
                 val checklists = firestoreService.getChecklistsForVisit(vId)
                 checklists.forEach { checklist ->
-                    checklistDao.insertChecklist(checklist.copy(isSynced = true))
+                    val syncedChecklist = checklist.copy(isSynced = true)
+                    if (checklistDao.existsChecklistById(syncedChecklist.id)) {
+                        checklistDao.updateChecklist(syncedChecklist)
+                    } else {
+                        checklistDao.insertChecklist(syncedChecklist)
+                    }
+
                     val answers = firestoreService.getAnswersForChecklist(vId, checklist.id)
-                    checklistDao.insertAnswers(answers)
+                    answers.forEach { answer ->
+                        if (checklistDao.existsAnswerById(answer.id)) {
+                            checklistDao.updateAnswer(answer)
+                        } else {
+                            checklistDao.insertAnswer(answer)
+                        }
+                    }
                 }
             }
             Log.d("Sync", "Full pull finished successfully")

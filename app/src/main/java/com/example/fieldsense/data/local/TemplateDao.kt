@@ -10,6 +10,9 @@ import com.example.fieldsense.data.model.Template
 import kotlinx.coroutines.flow.Flow
 @Dao
 interface TemplateDao {
+    @Query("SELECT EXISTS(SELECT 1 FROM templates WHERE id = :templateId)")
+    suspend fun existsById(templateId: Int): Boolean
+
     @Query("SELECT * FROM templates ORDER BY id DESC")
     fun getTemplates(): Flow<List<Template>>
 

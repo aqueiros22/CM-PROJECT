@@ -12,6 +12,9 @@ import com.example.fieldsense.data.model.Question
 
 @Dao
 interface QuestionDao {
+    @Query("SELECT EXISTS(SELECT 1 FROM questions WHERE id = :questionId)")
+    suspend fun existsById(questionId: Int): Boolean
+
     @Query("SELECT * FROM questions WHERE templateId = :templateId ORDER BY `order` ASC")
     fun getQuestionsForTemplate(templateId: Int): Flow<List<Question>>
 
@@ -23,6 +26,9 @@ interface QuestionDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertQuestion(question: Question): Long
+
+    @Update
+    suspend fun updateQuestion(question: Question)
 
     @Delete
     suspend fun deleteQuestion(question: Question)

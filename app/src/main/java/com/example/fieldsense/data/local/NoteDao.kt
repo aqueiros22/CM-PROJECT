@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface NoteDao {
 
+    @Query("SELECT EXISTS(SELECT 1 FROM notes WHERE id = :noteId)")
+    suspend fun existsById(noteId: Int): Boolean
+
     @Query("SELECT * FROM notes WHERE visitId = :visitId ORDER BY id DESC")
     fun getNotesForVisit(visitId: Int): Flow<List<Note>>
 

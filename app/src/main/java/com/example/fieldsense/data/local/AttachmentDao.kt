@@ -11,6 +11,9 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AttachmentDao {
+    @Query("SELECT EXISTS(SELECT 1 FROM attachments WHERE id = :attachmentId)")
+    suspend fun existsById(attachmentId: Int): Boolean
+
     @Query("SELECT * FROM attachments WHERE visitId = :visitId ORDER BY id DESC")
     fun getAttachmentsForVisit(visitId: Int): Flow<List<Attachment>>
 
