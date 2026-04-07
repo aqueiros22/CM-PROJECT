@@ -13,7 +13,7 @@ interface TemplateDao {
     @Query("SELECT * FROM templates ORDER BY id DESC")
     fun getTemplates(): Flow<List<Template>>
 
-    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTemplate(template: Template): Long
 
     @Delete

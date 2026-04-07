@@ -3,7 +3,6 @@ package com.example.fieldsense.data.model
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
-import com.example.fieldsense.data.model.Visit
 
 @Entity(
     tableName = "notes",
@@ -20,8 +19,8 @@ data class Note(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     val userId: String = "",
-    val visitId: Int,
-    val content: String,
-    val date: String,
+    val visitId: Int = 0,
+    val content: String = "",
+    val date: String = "",
     val isSynced: Boolean = false
 )

@@ -6,9 +6,9 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "visit_checklists")
 data class VisitChecklist(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val visitId: Int,
-    val templateId: Int,
-    val templateName: String,
-    val date: String,
+    val visitId: Int = 0,
+    val templateId: Int = 0,
+    val templateName: String = "",
+    val date: String = "",
     val isSynced: Boolean = false
 )

@@ -14,7 +14,7 @@ interface AreaDao {
     @Query("SELECT * FROM areas WHERE visitId = :visitId")
     fun getAreasForVisit(visitId: Int): Flow<List<Area>>
 
-    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertArea(area: Area): Long
 
     @Delete

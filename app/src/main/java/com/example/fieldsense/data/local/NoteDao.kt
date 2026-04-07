@@ -18,7 +18,7 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE visitId = :visitId")
     suspend fun getNotesForVisitSync(visitId: Int): List<Note>
 
-    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNote(note: Note): Long
 
     @Delete

@@ -20,7 +20,7 @@ interface VisitDao {
     @Query("SELECT * FROM visits ORDER BY id DESC")
     fun getAllVisits(): Flow<List<Visit>>
 
-    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertVisit(visit: Visit): Long
 
     @Query("DELETE FROM visits WHERE id = :visitId")

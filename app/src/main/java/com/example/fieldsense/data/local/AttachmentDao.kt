@@ -14,7 +14,7 @@ interface AttachmentDao {
     @Query("SELECT * FROM attachments WHERE visitId = :visitId ORDER BY id DESC")
     fun getAttachmentsForVisit(visitId: Int): Flow<List<Attachment>>
 
-    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAttachment(attachment: Attachment): Long
 
     @Delete

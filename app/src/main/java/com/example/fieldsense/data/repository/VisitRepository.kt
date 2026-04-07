@@ -64,12 +64,16 @@ class VisitRepository(
     }
 
     suspend fun pullEverythingFromServer() {
-        if (!isInternetAvailable()) return
+        if (!isInternetAvailable()) {
+            Log.d("Sync", "No internet available for sync")
+            return
+        }
         try {
-            Log.d("Sync", "Starting full pull...")
+            Log.d("Sync", "Starting full pull from Firestore...")
             
             // 1. Templates e Perguntas
             val remoteTemplates = firestoreService.getAllTemplates()
+            Log.d("Sync", "Found ${remoteTemplates.size} templates")
             remoteTemplates.forEach { template ->
                 templateDao.insertTemplate(template.copy(isSynced = true))
                 val questions = firestoreService.getQuestionsForTemplate(template.id)
@@ -78,21 +82,27 @@ class VisitRepository(
 
             // 2. Visitas e dependentes
             val remoteVisits = firestoreService.getAllVisits()
+            Log.d("Sync", "Found ${remoteVisits.size} visits")
             remoteVisits.forEach { visit ->
+                // Usamos insertVisit que deve estar configurado com OnConflictStrategy.REPLACE
                 visitDao.insertVisit(visit.copy(isSynced = true))
                 val vId = visit.id
 
                 // Notas
-                firestoreService.getNotesForVisit(vId).forEach { noteDao.insertNote(it.copy(isSynced = true)) }
+                val notes = firestoreService.getNotesForVisit(vId)
+                notes.forEach { noteDao.insertNote(it.copy(isSynced = true)) }
                 
                 // Áreas
-                firestoreService.getAreasForVisit(vId).forEach { areaDao.insertArea(it.copy(isSynced = true)) }
+                val areas = firestoreService.getAreasForVisit(vId)
+                areas.forEach { areaDao.insertArea(it.copy(isSynced = true)) }
                 
-                // Attachments (Aqui vem o remoteUrl da Cloudinary que guardámos no Firestore)
-                firestoreService.getAttachmentsForVisit(vId).forEach { attachmentDao.insertAttachment(it.copy(isSynced = true)) }
+                // Attachments
+                val attachments = firestoreService.getAttachmentsForVisit(vId)
+                attachments.forEach { attachmentDao.insertAttachment(it.copy(isSynced = true)) }
                 
                 // Checklists e Respostas
-                firestoreService.getChecklistsForVisit(vId).forEach { checklist ->
+                val checklists = firestoreService.getChecklistsForVisit(vId)
+                checklists.forEach { checklist ->
                     checklistDao.insertChecklist(checklist.copy(isSynced = true))
                     val answers = firestoreService.getAnswersForChecklist(vId, checklist.id)
                     checklistDao.insertAnswers(answers)

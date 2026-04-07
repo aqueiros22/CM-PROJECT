@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.fieldsense.BuildConfig
 import com.example.fieldsense.R
+import com.example.fieldsense.data.model.Area
 import com.example.fieldsense.data.model.Attachment
 import com.example.fieldsense.data.model.Note
 import com.example.fieldsense.data.model.Visit
@@ -45,6 +46,7 @@ import com.example.fieldsense.ui.notes.NoteDetailScreen
 import com.example.fieldsense.ui.notes.NoteViewModel
 import com.example.fieldsense.ui.templates.TemplateViewModel
 import com.example.fieldsense.ui.templates.TemplateViewModelFactory
+import com.example.fieldsense.ui.theme.FieldSenseGreen
 import com.example.fieldsense.ui.utils.DeleteConfirmationDialog
 import kotlinx.serialization.json.JsonObject
 import org.maplibre.compose.camera.CameraPosition
@@ -80,6 +82,7 @@ fun VisitDetailScreen(
     val context = LocalContext.current
     val notes by noteViewModel.getNotesForVisit(visit.id).collectAsState()
     val attachments by attachmentViewModel.getAttachmentsForVisit(visit.id).collectAsState()
+    val areas by areaViewModel.getAreasForVisit(visit.id).collectAsState()
 
     var showAddNoteDialog by rememberSaveable { mutableStateOf(false) }
     var showEditVisitDialog by rememberSaveable { mutableStateOf(false) }
@@ -254,7 +257,11 @@ fun VisitDetailScreen(
 
             // Map Section
             item {
-                VisitAreaMapSection(visit = visit, onEditArea = { onNavigateToDrawing(visit.id) })
+                VisitAreaMapSection(
+                    visit = visit,
+                    areas = areas,
+                    onEditArea = { onNavigateToDrawing(visit.id) }
+                )
             }
 
             // Attachments Section
@@ -414,7 +421,7 @@ fun VisitDetailScreen(
 }
 
 @Composable
-fun VisitAreaMapSection(visit: Visit, onEditArea: () -> Unit) {
+fun VisitAreaMapSection(visit: Visit, areas: List<Area>, onEditArea: () -> Unit) {
     val context = LocalContext.current
     val points = remember(visit.area) {
         val list = mutableListOf<Position>()
@@ -487,6 +494,49 @@ fun VisitAreaMapSection(visit: Visit, onEditArea: () -> Unit) {
                     cameraState = cameraState,
                     onMapClick = { _, _ -> ClickResult.Consume }
                 ) {
+                    // Draw existing areas from the Area entity
+                    areas.forEach { area ->
+                        key(area.id) {
+                            val posList = area.getPositions()
+                            if (posList.size >= 3) {
+                                val source = rememberGeoJsonSource(
+                                    data = GeoJsonData.JsonString(generatePolygonJson(posList))
+                                )
+                                FillLayer(
+                                    id = "area-fill-${area.id}",
+                                    source = source,
+                                    color = const(FieldSenseGreen),
+                                    opacity = const(0.2f)
+                                )
+                                LineLayer(
+                                    id = "area-line-${area.id}",
+                                    source = source,
+                                    color = const(FieldSenseGreen),
+                                    width = const(2.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Legacy visit.area if it has 3+ points
+                    if (points.size >= 3) {
+                        val legacySource = rememberGeoJsonSource(
+                            data = GeoJsonData.JsonString(generatePolygonJson(points))
+                        )
+                        FillLayer(
+                            id = "legacy-area-fill",
+                            source = legacySource,
+                            color = const(FieldSenseGreen),
+                            opacity = const(0.2f)
+                        )
+                        LineLayer(
+                            id = "legacy-area-line",
+                            source = legacySource,
+                            color = const(FieldSenseGreen),
+                            width = const(2.dp)
+                        )
+                    }
+
                     // Visit location marker
                     val centerSource = rememberGeoJsonSource(
                         data = GeoJsonData.Features(
@@ -509,6 +559,22 @@ fun VisitAreaMapSection(visit: Visit, onEditArea: () -> Unit) {
 
             }
         }
+    }
+}
+
+/**
+ * Helper to generate GeoJSON Polygon string
+ */
+private fun generatePolygonJson(points: List<Position>): String {
+    return buildString {
+        append("""{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[""")
+        points.forEachIndexed { index, pos ->
+            if (index > 0) append(",")
+            append("[${pos.longitude}, ${pos.latitude}]")
+        }
+        // Close polygon
+        append(",[${points.first().longitude}, ${points.first().latitude}]")
+        append("""]]}}""")
     }
 }
 

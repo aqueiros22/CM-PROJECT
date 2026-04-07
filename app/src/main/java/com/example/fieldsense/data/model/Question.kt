@@ -10,8 +10,8 @@ enum class QuestionType {
 @Entity(tableName = "questions")
 data class Question(
     @PrimaryKey(autoGenerate = true)val id: Int = 0,
-    val templateId: Int,
-    val text: String,
+    val templateId: Int = 0,
+    val text: String = "",
     val type: QuestionType = QuestionType.CHECKBOX,
     val order: Int = 0
 )

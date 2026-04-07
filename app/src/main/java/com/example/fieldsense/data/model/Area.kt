@@ -22,7 +22,7 @@ data class Area (
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     val userId: String = "",
-    val visitId: Int,
+    val visitId: Int = 0,
     val points: String = "",
     val isSynced: Boolean = false
 ) {
