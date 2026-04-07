@@ -32,9 +32,10 @@ class ChecklistRepository(
         checklistDao.deleteAnswersForChecklist(checklistId)
         val answersWithChecklistId = answers.map { it.copy(checklistId = checklistId) }
         checklistDao.insertAnswers(answersWithChecklistId)
+        val persistedAnswers = checklistDao.getAnswersForChecklistSync(checklistId)
 
         try {
-            firestoreService.uploadChecklistWithAnswers(savedChecklist, answersWithChecklistId)
+            firestoreService.uploadChecklistWithAnswers(savedChecklist, persistedAnswers)
             checklistDao.updateChecklist(savedChecklist.copy(isSynced = true))
         } catch (e: Exception) {
             Log.e("ChecklistRepository", "Cloud sync failed, stored locally only", e)
@@ -57,6 +58,7 @@ class ChecklistRepository(
             remoteChecklists.forEach { checklist ->
                 checklistDao.insertChecklist(checklist.copy(isSynced = true))
                 val remoteAnswers = firestoreService.getAnswersForChecklist(visitId, checklist.id)
+                checklistDao.deleteAnswersForChecklist(checklist.id)
                 checklistDao.insertAnswers(remoteAnswers)
             }
         } catch (e: Exception) {

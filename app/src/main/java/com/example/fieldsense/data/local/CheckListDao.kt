@@ -31,10 +31,32 @@ interface ChecklistDao {
     suspend fun updateChecklist(checklist: VisitChecklist)
 
     // Answers
-    @Query("SELECT * FROM answers WHERE checklistId = :checklistId")
+    @Query(
+        """
+        SELECT * FROM answers
+        WHERE id IN (
+            SELECT MAX(id)
+            FROM answers
+            WHERE checklistId = :checklistId
+            GROUP BY questionId, questionText, questionType
+        )
+        ORDER BY id ASC
+        """
+    )
     fun getAnswersForChecklist(checklistId: Int): Flow<List<Answer>>
 
-    @Query("SELECT * FROM answers WHERE checklistId = :checklistId")
+    @Query(
+        """
+        SELECT * FROM answers
+        WHERE id IN (
+            SELECT MAX(id)
+            FROM answers
+            WHERE checklistId = :checklistId
+            GROUP BY questionId, questionText, questionType
+        )
+        ORDER BY id ASC
+        """
+    )
     suspend fun getAnswersForChecklistSync(checklistId: Int): List<Answer>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -49,17 +71,17 @@ interface ChecklistDao {
     @Query("DELETE FROM answers WHERE checklistId = :checklistId")
     suspend fun deleteAnswersForChecklist(checklistId: Int)
 
-        @Query(
-                """
-                DELETE FROM answers
+    @Query(
+        """
+        DELETE FROM answers
+        WHERE checklistId = :checklistId
+            AND id NOT IN (
+                SELECT MAX(id)
+                FROM answers
                 WHERE checklistId = :checklistId
-                    AND id NOT IN (
-                        SELECT MAX(id)
-                        FROM answers
-                        WHERE checklistId = :checklistId
-                        GROUP BY questionId
-                    )
-                """
-        )
-        suspend fun removeDuplicateAnswersForChecklist(checklistId: Int)
+                GROUP BY questionId, questionText, questionType
+            )
+        """
+    )
+    suspend fun removeDuplicateAnswersForChecklist(checklistId: Int)
 }

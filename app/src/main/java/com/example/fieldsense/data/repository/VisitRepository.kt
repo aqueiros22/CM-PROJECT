@@ -83,13 +83,8 @@ class VisitRepository(
                 }
 
                 val questions = firestoreService.getQuestionsForTemplate(template.id)
-                questions.forEach { question ->
-                    if (questionDao.existsById(question.id)) {
-                        questionDao.updateQuestion(question)
-                    } else {
-                        questionDao.insertQuestion(question)
-                    }
-                }
+                questionDao.deleteQuestionsForTemplate(template.id)
+                questionDao.insertQuestions(questions)
             }
 
             // 2. Visitas e dependentes
@@ -148,13 +143,8 @@ class VisitRepository(
                     }
 
                     val answers = firestoreService.getAnswersForChecklist(vId, checklist.id)
-                    answers.forEach { answer ->
-                        if (checklistDao.existsAnswerById(answer.id)) {
-                            checklistDao.updateAnswer(answer)
-                        } else {
-                            checklistDao.insertAnswer(answer)
-                        }
-                    }
+                    checklistDao.deleteAnswersForChecklist(checklist.id)
+                    checklistDao.insertAnswers(answers)
                 }
             }
             Log.d("Sync", "Full pull finished successfully")

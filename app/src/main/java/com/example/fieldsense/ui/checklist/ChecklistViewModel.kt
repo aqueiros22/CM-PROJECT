@@ -74,10 +74,14 @@ class ChecklistViewModel(private val repository: ChecklistRepository, private va
             )
             // Buscar as perguntas do template para criar as answers vazias
             val questions = questionRepository.getQuestionsForTemplateOnce(template.id)
-            val emptyAnswers = questions.map { question ->
+            val uniqueQuestions = questions
+                .sortedBy { it.order }
+                .distinctBy { "${it.order}|${it.type}|${it.text.trim()}" }
+            val emptyAnswers = uniqueQuestions.map { question ->
+                val stableQuestionId = if (question.id > 0) question.id else -(question.order + 1)
                 Answer(
                     checklistId = 0, // será substituído pelo id gerado na inserção
-                    questionId = question.id,
+                    questionId = stableQuestionId,
                     questionText = question.text,
                     questionType = question.type,
                     value = ""

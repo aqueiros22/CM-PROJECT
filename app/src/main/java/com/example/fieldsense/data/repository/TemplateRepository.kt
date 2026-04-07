@@ -54,6 +54,7 @@ class TemplateRepository  (
             remoteTemplates.forEach { template ->
                 templateDao.insertTemplate(template.copy(isSynced = true))
                 val remoteQuestions = firestoreService.getQuestionsForTemplate(template.id)
+                questionDao.deleteQuestionsForTemplate(template.id)
                 questionDao.insertQuestions(remoteQuestions)
             }
         } catch (e: Exception) {
@@ -83,11 +84,12 @@ class TemplateRepository  (
             q.copy(templateId = templateId, order = index)
         }
         questionDao.insertQuestions(questionsWithTemplateId)
+        val persistedQuestions = questionDao.getQuestionsForTemplateOnce(templateId)
         Log.d("TemplateRepo", "Perguntas inseridas: ${questionsWithTemplateId.size}")
 
         val syncedTemplate = template.copy(id = templateId, isSynced = true)
         try {
-            firestoreService.uploadTemplateWithQuestions(syncedTemplate, questionsWithTemplateId)
+            firestoreService.uploadTemplateWithQuestions(syncedTemplate, persistedQuestions)
             templateDao.updateTemplate(syncedTemplate)
             Log.d("TemplateRepo", "Sync com Firestore ok")
         } catch (e: Exception) {
@@ -108,11 +110,12 @@ class TemplateRepository  (
             )
         }
         questionDao.insertQuestions(updatedQuestions)
+        val persistedQuestions = questionDao.getQuestionsForTemplateOnce(template.id)
         try {
             val syncedTemplate = updatedTemplate.copy(isSynced = true)
             firestoreService.uploadTemplateWithQuestions(
                 syncedTemplate,
-                updatedQuestions
+                persistedQuestions
             )
             templateDao.updateTemplate(syncedTemplate)
         } catch (e: Exception) {

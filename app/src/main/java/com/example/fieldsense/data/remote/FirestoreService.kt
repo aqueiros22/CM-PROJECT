@@ -106,8 +106,13 @@ class FirestoreService {
         }
 
         for (question in questions) {
+            val questionDocId = if (question.id > 0) {
+                question.id.toString()
+            } else {
+                "order_${question.order}"
+            }
             questionsCollection
-                .document(question.id.toString())
+                .document(questionDocId)
                 .set(question)
                 .await()
         }
@@ -128,8 +133,12 @@ class FirestoreService {
         checklistRef?.set(checklist)?.await()
 
         val answersCollection = checklistRef?.collection("answers")
+        val existingAnswers = answersCollection?.get()?.await()
+        for (doc in existingAnswers?.documents.orEmpty()) {
+            doc.reference.delete().await()
+        }
         answers.forEach { answer ->
-            answersCollection?.document(answer.id.toString())?.set(answer)?.await()
+            answersCollection?.document(answer.questionId.toString())?.set(answer)?.await()
         }
     }
 
