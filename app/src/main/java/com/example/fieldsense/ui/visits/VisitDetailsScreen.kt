@@ -598,7 +598,7 @@ fun AttachmentCard(attachment: Attachment, onDelete: () -> Unit, onClick: () -> 
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+        colors = CardDefaults.cardColors(containerColor = Color(0xF0E8F5E9))
     ) {
         Row(
             modifier = Modifier.padding(12.dp).fillMaxWidth(),
@@ -606,7 +606,7 @@ fun AttachmentCard(attachment: Attachment, onDelete: () -> Unit, onClick: () -> 
         ) {
             Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.secondaryContainer,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                 modifier = Modifier.size(40.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -614,7 +614,7 @@ fun AttachmentCard(attachment: Attachment, onDelete: () -> Unit, onClick: () -> 
                         imageVector = if (attachment.type == "image") Icons.Filled.Image else Icons.Filled.Description,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -627,7 +627,8 @@ fun AttachmentCard(attachment: Attachment, onDelete: () -> Unit, onClick: () -> 
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = attachment.date,
