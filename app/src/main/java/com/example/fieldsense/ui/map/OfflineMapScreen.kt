@@ -1,57 +1,43 @@
 package com.example.fieldsense.ui.map
 
+import android.location.Geocoder
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.fieldsense.BuildConfig
 import com.example.fieldsense.ui.theme.Shapes
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import org.maplibre.android.geometry.LatLng
-import org.maplibre.compose.layers.FillLayer
-import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
 import org.maplibre.compose.expressions.dsl.const
 import org.maplibre.compose.layers.CircleLayer
+import org.maplibre.compose.layers.FillLayer
 import org.maplibre.compose.layers.LineLayer
+import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.compose.offline.OfflineManager
 import org.maplibre.compose.offline.OfflinePackDefinition
 import org.maplibre.compose.sources.GeoJsonData
@@ -62,7 +48,7 @@ import org.maplibre.spatialk.geojson.Feature
 import org.maplibre.spatialk.geojson.FeatureCollection
 import org.maplibre.spatialk.geojson.Point
 import org.maplibre.spatialk.geojson.Position
-
+import java.util.*
 
 @Composable
 fun BoundingBoxOverlay(state: BoundingBoxState) {
@@ -118,8 +104,6 @@ fun BoundingBoxOverlay(state: BoundingBoxState) {
     )
 }
 
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OfflineMapScreen(
@@ -131,6 +115,11 @@ fun OfflineMapScreen(
     val context = LocalContext.current
     val state = viewModel.state
     val userLocation by locationViewModel.location
+    val focusManager = LocalFocusManager.current
+    val coroutineScope = rememberCoroutineScope()
+
+    var searchQuery by remember { mutableStateOf("") }
+    var isSearching by remember { mutableStateOf(false) }
 
     val cameraState = rememberCameraState(
         firstPosition = CameraPosition(
@@ -138,7 +127,6 @@ fun OfflineMapScreen(
             zoom = if (userLocation != null) 13.0 else 5.0
         )
     )
-    val coroutineScope = rememberCoroutineScope()
 
     // Flag to ensure we only auto-center once when the screen opens
     var hasCenteredInitially by remember { mutableStateOf(false) }
@@ -155,11 +143,50 @@ fun OfflineMapScreen(
         }
     }
 
+    fun performSearch() {
+        if (searchQuery.isBlank()) return
+        isSearching = true
+        coroutineScope.launch(Dispatchers.IO) {
+            try {
+                val geocoder = Geocoder(context, Locale.getDefault())
+                val addresses = geocoder.getFromLocationName(searchQuery, 1)
+                if (!addresses.isNullOrEmpty()) {
+                    val address = addresses[0]
+                    withContext(Dispatchers.Main) {
+                        cameraState.animateTo(
+                            CameraPosition(
+                                target = Position(address.longitude, address.latitude),
+                                zoom = 15.0
+                            )
+                        )
+                        isSearching = false
+                        focusManager.clearFocus()
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Morada não encontrada", Toast.LENGTH_SHORT).show()
+                        isSearching = false
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Erro na pesquisa", Toast.LENGTH_SHORT).show()
+                    isSearching = false
+                }
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
-
             TopAppBar(
-                title = { Text("Mapas offline") },
+                title = {
+                    if (isSearching) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    } else {
+                        Text("Mapas offline")
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -175,15 +202,16 @@ fun OfflineMapScreen(
 
         Box(modifier = Modifier
             .fillMaxSize()
-        )
-        {
+            .padding(paddingValues)
+        ) {
             MaplibreMap(
-                modifier = Modifier,
+                modifier = Modifier.fillMaxSize(),
                 baseStyle = BaseStyle.Uri("https://api.maptiler.com/maps/hybrid-v4/style.json?key=${BuildConfig.MAPTILER_API_KEY}"),
                 cameraState = cameraState,
                 onMapClick = { point: Position, screenPoint: DpOffset ->
                     val latLng = LatLng(point.latitude, point.longitude)
                     viewModel.onMapTap(latLng)
+                    focusManager.clearFocus()
                     ClickResult.Pass
                 }
             ) {
@@ -212,11 +240,45 @@ fun OfflineMapScreen(
                 }
             }
 
+            // Search bar overlay (now relative to Box top, which is below TopAppBar)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                shape = CircleShape,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                TextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Pesquisar morada...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Limpar")
+                            }
+                        }
+                    },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { performSearch() })
+                )
+            }
+
             // UI controls overlay
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
                     .fillMaxHeight(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
@@ -231,8 +293,8 @@ fun OfflineMapScreen(
                     shape = Shapes.medium,
                     tonalElevation = 4.dp,
                     shadowElevation = 6.dp,
-                    color = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier.padding(top = 10.dp)
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                    modifier = Modifier.padding(top = 80.dp) // Offset hint from search bar
                 ) {
                     Row(
                         horizontalArrangement = Arrangement.SpaceEvenly,
@@ -244,6 +306,7 @@ fun OfflineMapScreen(
                             contentDescription = null,
                             modifier = Modifier.padding(end = 5.dp)
                         )
+                        @Suppress("DEPRECATION")
                         Text(
                             text = hint,
                             style = MaterialTheme.typography.bodyMedium,
@@ -253,7 +316,7 @@ fun OfflineMapScreen(
                 }
 
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
                     horizontalAlignment = Alignment.End
                 ) {
                     // Center on Me Button
@@ -299,18 +362,12 @@ fun OfflineMapScreen(
                                         val uniqueId = java.util.UUID.randomUUID().toString()
                                         val metadataJson = org.json.JSONObject().apply {
                                             put("id", uniqueId)
-                                            put("name", "Mapa ${uniqueId.take(5)}") // Default name using part of ID
+                                            put("name", searchQuery.ifBlank { "Mapa ${uniqueId.take(5)}" }) 
                                         }
 
-                                        // Set metadata for the pack
                                         pack.setMetadata(metadataJson.toString().toByteArray(Charsets.UTF_8))
-
                                         offlineManager.resume(pack)
-                                        Toast.makeText(
-                                            context,
-                                            "A iniciar transferência...",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+                                        Toast.makeText(context, "A iniciar transferência...", Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             ) {
